@@ -202,3 +202,116 @@ Saya tidak menyarankan membuang semuanya. Tiga hal punya nilai riil:
 Jalankan: `python research/ict_test.py && python research/ob_fix.py`
 
 Saya sarankan menjalankan `ob_fix.py` sendiri — melihat +13 bps runtuh jadi −0.13 bps setelah satu baris diperbaiki adalah pelajaran yang lebih kuat daripada tabel mana pun.
+
+---
+---
+
+# ADENDUM — Ronde 2: Uji Setup ICT Lanjutan + Kontrol Drift
+
+*(Ditambahkan setelah percobaan lampiran PDF kedua. File tetap tidak sampai ke workspace — pengujian diperluas ke setup ICT yang belum tercakup di ronde 1.)*
+
+Setup yang diuji di ronde ini: **BOS/CHoCH, Turtle Soup, OTE (Optimal Trade Entry), Premium/Discount, Power of 3 (AMD)**. Semua kausal — swing dikonfirmasi dengan `shift(n)`, tidak ada `shift` negatif.
+
+## A. Hasil Mentah
+
+### Timeframe M15 — semua gagal
+
+| Setup | n | h48 gross | **h48 net** |
+|---|---|---|---|
+| BOS bullish → long | 16,225 | +3.02 | **−0.58** |
+| BOS bearish → short | 15,795 | −1.49 | **−5.09** |
+| Turtle Soup low → long | 19,464 | +2.06 | **−1.54** |
+| Turtle Soup high → short | 19,512 | −3.07 | **−6.67** |
+| OTE long | 9,088 | −0.35 | **−3.95** |
+| OTE short | 9,022 | −3.22 | **−6.82** |
+| Premium → short | 65,801 | −3.68 | **−7.28** |
+
+Konsisten dengan ronde 1: di M15, biaya 3.6 bps menghapus semuanya.
+
+### Timeframe H1 — beberapa terlihat positif
+
+| Setup | n | h48 gross | **h48 net** | t |
+|---|---|---|---|---|
+| **OTE long** | 2,449 | +15.61 | **+12.01** | +5.1 |
+| **Turtle Soup low → long** | 5,480 | +13.45 | **+9.85** | +6.6 |
+| **BOS bullish → long** | 3,877 | +10.09 | **+6.49** | +4.2 |
+| Discount → long | 15,730 | +5.34 | +1.74 | +4.5 |
+| Turtle Soup high → short | 5,404 | −7.91 | **−11.51** | −3.7 |
+| OTE short | 2,590 | −9.92 | **−13.52** | −3.4 |
+| Premium → short | 17,908 | −8.66 | **−12.26** | −7.8 |
+
+Di sini muncul pola mencolok: **setiap setup long positif, setiap setup short negatif.** Itu bukan tanda edge — itu tanda **bias arah**. Maka saya jalankan uji kontrol.
+
+## B. Uji Kontrol — Benchmark yang Sebenarnya
+
+Pertanyaan yang harus diajukan: apakah setup ini mengalahkan **long acak tanpa setup apa pun**?
+
+```
+long ACAK n=2,500, hold 48 jam : gross +8.34 bps   net +4.74   (t +2.65)
+long ACAK n=5,500, hold 48 jam : gross +8.80 bps   net +5.20   (t +4.41)
+long ACAK n=9,000, hold 48 jam : gross +7.55 bps   net +3.95   (t +4.80)
+SEMUA bar (drift pasif)        : gross +9.84 bps   net +6.24
+```
+
+**Melempar dadu dan long emas menghasilkan +8.8 bps per 48 jam, net +5.20, dengan t-stat 4.41.**
+
+Itulah benchmark sesungguhnya — bukan nol. Emas naik +230% dalam periode dataset ini; setiap strategi long-only akan terlihat profitable.
+
+### Excess return setelah dikurangi drift
+
+| Setup | Gross | Net | **Excess vs drift** | **t-stat excess** |
+|---|---|---|---|---|
+| OTE long | +15.61 | +12.01 | **+5.77** | **+1.88** |
+| Turtle Soup low → long | +13.45 | +9.85 | **+3.62** | **+1.77** |
+| BOS bullish → long | +10.09 | +6.49 | **+0.25** | **+0.11** |
+| Discount zone → long | +5.34 | +1.74 | **−4.49** | **−3.77** ❌ |
+
+Angka "t = +5.1" pada OTE runtuh menjadi **t = +1.88** setelah drift dikeluarkan — di bawah ambang signifikansi (t > 2). BOS runtuh menjadi **t = +0.11**, praktis nol.
+
+**Discount zone justru secara signifikan LEBIH BURUK dari long acak** (t = −3.77). Menunggu harga masuk zona diskon berarti melewatkan tren — Anda membeli kelemahan di aset yang sedang naik.
+
+### Uji per tahun — Turtle Soup (setup terbaik) vs drift pasif
+
+| Tahun | Setup | Drift pasif | Excess | Menang? |
+|---|---|---|---|---|
+| 2016 | −25.30 | −30.46 | +5.16 | ✅ |
+| 2017 | +18.74 | +10.13 | +8.61 | ✅ |
+| 2018 | −5.52 | −1.62 | −3.90 | ❌ |
+| 2019 | +14.28 | +14.29 | −0.01 | ❌ |
+| 2020 | +27.05 | +18.91 | +8.14 | ✅ |
+| 2021 | +4.68 | −5.48 | +10.16 | ✅ |
+| 2022 | +12.97 | +1.47 | +11.50 | ✅ |
+| 2023 | +7.58 | +8.91 | −1.33 | ❌ |
+| 2024 | +21.11 | +20.33 | +0.78 | ✅ |
+| 2025 | +38.48 | +41.12 | −2.64 | ❌ |
+| 2026 | +4.66 | +0.54 | +4.12 | ✅ |
+
+**7 dari 11 tahun.** Melempar koin menghasilkan 5.5. Dengan n=11, hasil 7/11 punya p-value ≈ 0.27 — **tidak signifikan**.
+
+## C. Power of 3 / AMD — Gagal
+
+| Setup | n | Gross | Net | t | Tahun positif |
+|---|---|---|---|---|---|
+| Sweep LOW Asia pagi → long siang | 894 | **−4.73** | −8.33 | −1.79 | 3/11 |
+| Sweep HIGH Asia pagi → short siang | 1,004 | +0.08 | −3.52 | +0.04 | 5/11 |
+
+Konsisten dengan temuan Judas Swing di ronde 1: **model manipulasi-lalu-reversal tidak terjadi pada XAUUSD.**
+
+## D. Kesimpulan Ronde 2
+
+Tiga lapis penyaringan, dan setiap lapis menggugurkan lebih banyak:
+
+| Lapis uji | Yang lolos |
+|---|---|
+| 1. Gross return positif | OTE, Turtle Soup, BOS, Discount (H1) |
+| 2. Setelah biaya 3.6 bps | OTE, Turtle Soup, BOS |
+| 3. **Setelah dikurangi drift emas** | **Tidak ada** (t maks = 1.88, di bawah ambang) |
+
+**Tidak ada setup ICT/SMC yang terbukti menambah nilai di atas sekadar "long emas secara acak dan tahan 2 hari".**
+
+Yang terjadi pada backtest H1 di bagian A adalah **setup long menangkap drift struktural emas**, bukan menemukan edge. Buktinya: sisi short — yang melawan drift — rugi besar di **semua** setup tanpa kecuali (−11.51, −12.26, −13.52). Kalau ICT benar-benar membaca "jejak smart money", sisi short seharusnya juga bekerja.
+
+**Nuansa yang adil:** OTE dan Turtle Soup punya excess t-stat 1.8–1.9. Itu bukan nol — arahnya benar, dan dengan data lebih panjang mungkin mencapai signifikansi. Tapi 1.88 adalah wilayah "mungkin ada sesuatu yang sangat tipis", bukan dasar untuk mempertaruhkan modal, apalagi setelah saya menguji puluhan varian (multiple-testing: dengan ~30 setup diuji, satu-dua akan mencapai t≈2 murni karena kebetulan).
+
+**Implikasi praktis:** kalau Anda trading ICT long-only di XAUUSD 2016–2026 dan profit, hasil itu kemungkinan besar berasal dari **emas yang naik 230%**, bukan dari setup-nya. Cara mengujinya: bandingkan hasil Anda dengan sekadar buy & hold di periode yang sama. Itu benchmark yang jujur.
+
