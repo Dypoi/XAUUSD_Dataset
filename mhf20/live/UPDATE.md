@@ -23,7 +23,7 @@ git fetch --depth 1 origin arena/01a067ae-xauusd-dataset
 git reset --hard FETCH_HEAD
 ```
 
-Harus muncul: `HEAD is now at cbfab5a Fix candle display: ...`
+Harus muncul commit terbaru (`HEAD is now at ...`).
 
 > Pakai `fetch` + `reset`, **bukan `git pull`** — clone dangkal tidak punya riwayat
 > lengkap sehingga `git pull` gagal.
@@ -51,7 +51,7 @@ cd %USERPROFILE%\Desktop\MHF20
 git log --oneline -1
 ```
 
-Harus menampilkan `cbfab5a Fix candle display: ...`
+Harus menampilkan commit terbaru dari daftar di bagian **Riwayat perbaikan**.
 
 ### Cek B — jalankan audit
 
@@ -60,10 +60,19 @@ cd mhf20\live
 .venv\Scripts\python tests\test_resilience.py
 ```
 
-Harus berakhir dengan **`LULUS 32 · GAGAL 0`**.
-(Sebelum update hasilnya 25 — kalau masih 25, berarti update belum masuk.)
+Harus berakhir dengan **`LULUS 37 · GAGAL 0`**.
+Kalau masih 32 atau 25, berarti update belum masuk.
 
-### Cek C — lihat dashboard
+### Cek C — spread cocok dengan broker
+
+```cmd
+.venv\Scripts\python cek_spread.py
+```
+
+Angka **Spread NYATA (ask-bid)** harus mirip yang diiklankan Exness (~$0,26),
+dan statusnya **LOLOS**.
+
+### Cek D — lihat dashboard
 
 - Candle **bergerak tiap detik**, tidak lagi tersendat ~6 detik
 - Harga candle terakhir sekarang **nyambung dengan bid/ask** di header
@@ -78,6 +87,7 @@ Harus berakhir dengan **`LULUS 32 · GAGAL 0`**.
 | **Candle pakai harga BID** | Semua candle tergeser ~½ spread dari data backtest — bisa membuat sinyal live berbeda dari backtest | Dikonversi ke MID `(bid+ask)/2`, sama persis dengan backtest |
 | **Candle tersendat** | Rantai polling 2s + 3s + 1s = **6 detik** | Bar berjalan digerakkan tick tiap **0,25 detik** |
 | **Polling lambat** | runner 2s, browser 3s | runner 0,6s, browser 1s |
+| **Spread bar 10× lipat** | `spread/100` → `$2,600` pada XAUUSDm (digits=3) → **guard memblokir SEMUA entry** | `spread × point` → `$0,260`, plus jaring pengaman ask-bid |
 
 Bug candle-BID adalah yang paling penting. Sinyal MHF-20 membandingkan harga secara
 presisi (sweep BSL, break swing high, FVG buffer $0,30), jadi pergeseran setengah spread
@@ -85,7 +95,11 @@ bisa memicu atau membatalkan entry yang seharusnya tidak.
 
 Uji regresi [16] dan [17] ditambahkan supaya bug ini tidak terulang.
 
-**Status audit:** paritas 191/191 · ketahanan 32/32 · eksekusi 37/37.
+**Status audit:** paritas 191/191 · ketahanan **37/37** · eksekusi 37/37.
+
+### Riwayat perbaikan
+- `cbfab5a` candle BID→MID + latensi 6s→1s
+- **spread bar 10×** — paling parah: bikin nol entry selama jurnal berjalan
 
 ---
 

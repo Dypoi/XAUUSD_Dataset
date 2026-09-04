@@ -123,9 +123,18 @@ class MT5Bridge:
             # setengah spread terhadap backtest -> bukan sekadar beda tampilan.
             si = mt5.symbol_info(self.symbol)
             point = float(si.point) if si else 0.01
+            # Spread bar dari MT5 dalam POINT, bukan pip/USD. XAUUSD Exness
+            # digits=3 -> point=0.001. Membaginya dengan 100 (asumsi digits=2)
+            # menghasilkan nilai 10x lipat dan MEMBLOKIR SEMUA ENTRY.
+            tk = mt5.symbol_info_tick(self.symbol)
+            live_sp = float(tk.ask - tk.bid) if tk else None
             out = []
             for x in r:
                 sp = float(x['spread']) * point      # spread bar dalam USD
+                # jaring pengaman: kalau hasil konversi jauh meleset dari
+                # spread nyata (ask-bid), percayai yang nyata.
+                if live_sp and live_sp > 0 and (sp > live_sp * 20 or sp <= 0):
+                    sp = live_sp
                 h = sp / 2.0                          # bid -> mid
                 out.append(dict(ts=int(x['time']) * 1000,
                                 open=float(x['open']) + h, high=float(x['high']) + h,

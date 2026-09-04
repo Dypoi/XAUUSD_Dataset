@@ -115,5 +115,14 @@ html=open(os.path.join(_L,'static','index.html')).read()
 chk("frontend poll <= 1 detik", "setInterval(poll,1000)" in html)
 chk("sinyal TETAP dari bar tertutup", "for x in bars[:-1]" in rs)
 
+print("\n[18] Konversi spread bar (bug 10x pada digits=3)")
+src=open(os.path.join(_L,'mt5_bridge.py')).read()
+chk("tidak membagi 100", "float(x['spread']) / 100.0" not in src)
+chk("pakai symbol point", "float(x['spread']) * point" in src)
+chk("ada jaring pengaman ask-bid", "live_sp" in src and "sp = live_sp" in src)
+raw=260
+chk("digits=3 -> $0.260", abs(raw*0.001-0.260)<1e-9, f"(lama: ${raw/100:.3f})")
+chk("guard $1.2 melewatkan spread normal", 0.26 <= 1.2)
+
 print(f"\n{'='*54}\nLULUS {P} · GAGAL {F}")
 sys.exit(1 if F else 0)
