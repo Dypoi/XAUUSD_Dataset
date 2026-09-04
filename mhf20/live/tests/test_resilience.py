@@ -160,5 +160,13 @@ print("\n[21] Contract size diambil dari broker")
 chk("baca trade_contract_size", "trade_contract_size" in ex)
 chk("lot dikoreksi bila beda", "c.CONTRACT_SIZE / cs" in ex)
 
+print("\n[22] Dashboard menampilkan waktu UTC (cocok MT5 Exness GMT+0)")
+h=open(os.path.join(_L,'static','index.html')).read()
+chk("ada helper UTC", "timeZone:'UTC'" in h)
+chk("jam header UTC", "utcT(Date.now())" in h)
+chk("waktu bar UTC", "utcDT(bs[bs.length-1].ts)" in h)
+chk("tidak ada format zona lokal tersisa",
+    "toLocaleString('id-ID',{day" not in h)
+
 print(f"\n{'='*54}\nLULUS {P} · GAGAL {F}")
 sys.exit(1 if F else 0)
