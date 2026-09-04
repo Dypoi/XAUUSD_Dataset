@@ -15,12 +15,14 @@ sys.path[:0] = [_HERE, os.path.dirname(_HERE)]
 import pandas as pd
 from config import CFG
 from store import Store, now_ms
+from executor import Executor
 import signal_engine as SE
 
 
 class Runner:
     def __init__(self, bridge, store: Store):
         self.b = bridge; self.s = store
+        self.ex = Executor(bridge, store, CFG, logger=self.log)
         self.stop_flag = threading.Event()
         self.state = dict(status="INIT", last_tick=None, last_bar_ts=None,
                           tick=None, account={}, open_positions=[], day_pnl=0.0,
@@ -73,6 +75,10 @@ class Runner:
             if st.get("start_equity") is None:
                 st["start_equity"] = eq; self.s.sset("journal", st)
             self.state["peak"] = max(self.s.sget("peak_equity", eq), eq)
+        # WAJIB sebelum entry baru: pastikan tak ada order yang nasibnya menggantung
+        self.ex.reconcile_intents()
+        self.state["frozen"] = self.ex.frozen
+        self.state["freeze_reason"] = self.ex.freeze_reason
         self.log("INFO", "RECOVER", "Pemulihan selesai.")
 
     def reconcile(self):
@@ -106,7 +112,7 @@ class Runner:
     # ---------------- loop utama ----------------
     def loop(self):
         self.state["status"] = "RUNNING"
-        last_beat = 0; last_recon = 0; last_bars = 0
+        last_beat = 0; last_recon = 0; last_bars = 0; last_manage = 0
         while not self.stop_flag.is_set():
             try:
                 t = self.b.tick()
@@ -120,6 +126,15 @@ class Runner:
                 if time.time() - last_bars > 2:
                     last_bars = time.time()
                     self._poll_bars()
+
+                if time.time() - last_manage > CFG.MANAGE_INTERVAL_S:
+                    last_manage = time.time()
+                    self.ex.manage_positions()
+                    if self.ex.frozen and not self.state.get("frozen"):
+                        self.ex.reconcile_intents()
+                    self.state["frozen"] = self.ex.frozen
+                    self.state["freeze_reason"] = self.ex.freeze_reason
+                    self.state["orders_today"] = self.ex.orders_today
 
                 if time.time() - last_recon > 10:
                     last_recon = time.time()
@@ -185,6 +200,15 @@ class Runner:
             self.state["signals_today"] += 1
             self.log("INFO", "SIGNAL",
                      f"ENTRY VALID @ {ev.price:.2f} lot={ev.lot} SL={ev.sl:.2f} TP2={ev.tp2:.2f}")
+            r = self.ex.execute(ev, len(self.state["open_positions"]),
+                                self.state["day_pnl"], self.state["equity"], self.state["peak"])
+            self.state["last_exec"] = r
+            self.state["frozen"] = self.ex.frozen
+            self.state["freeze_reason"] = self.ex.freeze_reason
+            if not r.get("ok"):
+                self.log("WARN", "EXEC", f"Tidak dieksekusi: {r.get('reason')}")
+            else:
+                self.reconcile()
 
     def _update_day_pnl(self):
         try:

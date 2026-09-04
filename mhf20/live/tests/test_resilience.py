@@ -68,13 +68,21 @@ src=open(os.path.join(_L,'runner.py')).read()
 chk("bar berjalan dikecualikan","for x in bars[:-1]" in src)
 chk("evaluasi pakai bars[-2]","bars[-2]" in src)
 
-print("\n[8] READ-ONLY: tidak ada pengiriman order")
+print("\n[8] Order HANYA boleh dikirim lewat executor.py")
 bad=[]
-for f in ('runner.py','app.py','mt5_bridge.py','signal_engine.py'):
+for f in ('runner.py','app.py','mt5_bridge.py','signal_engine.py','store.py'):
     t=open(os.path.join(_L,f)).read()
-    for kw in ('order_send','order_check','OrderSend','TRADE_ACTION_DEAL'):
-        if kw in t: bad.append(f"{f}:{kw}")
-chk("nol panggilan order",not bad,str(bad))
+    import re
+    if re.search(r'mt5\.order_send\s*\(', t): bad.append(f)
+chk("tidak ada order_send di luar executor",not bad,str(bad))
+ex=open(os.path.join(_L,'executor.py')).read()
+chk("executor menulis intent sebelum kirim",
+    ex.index('create_intent') < ex.index('def _send'))
+chk("intent punya UNIQUE(signal_ts,symbol)",
+    'UNIQUE(signal_ts, symbol)' in open(os.path.join(_L,'store.py')).read())
+chk("client_id ditanam di comment order",'"comment": cid' in ex)
+chk("ada verifikasi setelah kirim",'_verify' in ex)
+chk("proteksi akun real",'DEMO_ONLY' in ex)
 
 print("\n[9] Warmup cukup untuk MA240 H4")
 from config import CFG

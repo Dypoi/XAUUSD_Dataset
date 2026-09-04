@@ -79,6 +79,36 @@ def api_signals(limit: int = 100, only_passed: int = 0):
     return dict(signals=STORE.signals(limit, bool(only_passed)))
 
 
+@app.post("/api/panic")
+def api_panic():
+    """Tombol darurat: tutup semua posisi MHF-20."""
+    if not RUN: return dict(ok=False, reason="belum siap")
+    r = RUN.ex.panic_close_all()
+    STORE.log("WARN", "PANIC", f"Panic close dipicu: {r}")
+    return r
+
+
+@app.post("/api/toggle_auto")
+def api_toggle():
+    """Hidup/matikan auto-execute saat berjalan."""
+    CFG.AUTO_EXECUTE = not CFG.AUTO_EXECUTE
+    STORE.log("WARN", "CONFIG", f"AUTO_EXECUTE -> {CFG.AUTO_EXECUTE}")
+    return dict(auto_execute=CFG.AUTO_EXECUTE)
+
+
+@app.post("/api/unfreeze")
+def api_unfreeze():
+    """Paksa rekonsiliasi ulang setelah pembekuan."""
+    if not RUN: return dict(ok=False)
+    RUN.ex.reconcile_intents()
+    return dict(frozen=RUN.ex.frozen, reason=RUN.ex.freeze_reason)
+
+
+@app.get("/api/intents")
+def api_intents(limit: int = 100):
+    return dict(intents=STORE.intents(limit))
+
+
 @app.get("/api/trades")
 def api_trades(limit: int = 200):
     return dict(trades=STORE.trades(limit))
@@ -141,6 +171,9 @@ async def ws(sock: WebSocket):
                 day_pnl=st.get("day_pnl"), account=st.get("account"),
                 open_positions=st.get("open_positions"), journal_day=st.get("journal_day"),
                 last_eval=st.get("last_eval"), errors=st.get("errors"),
+                frozen=st.get("frozen"), freeze_reason=st.get("freeze_reason"),
+                auto_execute=CFG.AUTO_EXECUTE, orders_today=st.get("orders_today", 0),
+                last_exec=st.get("last_exec"),
                 current_bar=cur, symbol=BRIDGE.symbol if BRIDGE else "?",
                 heartbeat_age_s=((now_ms() - hb["ts"]) / 1000 if hb else None),
                 uptime_s=(now_ms() - st.get("uptime_start", now_ms())) / 1000,

@@ -135,6 +135,7 @@ class MT5Bridge:
             return [dict(ticket=int(p.ticket), type=int(p.type), volume=float(p.volume),
                          price_open=float(p.price_open), sl=float(p.sl), tp=float(p.tp),
                          profit=float(p.profit), time=int(p.time) * 1000,
+                         symbol=str(p.symbol), magic=int(p.magic),
                          comment=str(p.comment)) for p in ps]
         except Exception as e:
             self.log("WARN", "MT5", f"positions error: {e}"); return []
@@ -152,6 +153,7 @@ class MT5Bridge:
                                 type=int(d.type), entry=int(d.entry), volume=float(d.volume),
                                 price=float(d.price), profit=float(d.profit),
                                 commission=float(d.commission), swap=float(d.swap),
+                                comment=str(d.comment), magic=int(d.magic),
                                 time=int(d.time) * 1000))
             return out
         except Exception as e:
@@ -162,10 +164,12 @@ class MT5Bridge:
         try:
             a = mt5.account_info()
             if a:
+                ti = mt5.terminal_info()
                 self.account = dict(login=a.login, server=a.server, balance=float(a.balance),
                                     equity=float(a.equity), margin=float(a.margin),
                                     margin_free=float(a.margin_free), currency=a.currency,
-                                    leverage=a.leverage, trade_mode=int(a.trade_mode))
+                                    leverage=a.leverage, trade_mode=int(a.trade_mode),
+                                    trade_allowed=bool(getattr(ti, 'trade_allowed', True)) and bool(a.trade_allowed))
         except Exception:
             pass
         return self.account
@@ -204,3 +208,43 @@ class ReplayBridge:
         b = self.bars(2)[-1]
         return dict(ts=b['ts'], bid=b['close'] - b['spread'] / 2,
                     ask=b['close'] + b['spread'] / 2, spread=b['spread'])
+
+
+class SimBroker:
+    """Broker tiruan untuk menguji jalur EKSEKUSI tanpa MT5.
+
+    Bisa disuruh gagal dengan cara-cara berbahaya:
+      fail_mode='none'      normal
+      fail_mode='timeout'   order MASUK tapi jawabannya hilang (kasus terburuk)
+      fail_mode='reject'    ditolak broker
+      fail_mode='silent'    retcode DONE tapi posisi tidak muncul
+    """
+    def __init__(self):
+        self._pos = {}
+        self._deals = []
+        self._next = 1000
+        self.fail_mode = 'none'
+        self.sent_count = 0
+
+    def send(self, cid, lot, price, sl, tp):
+        self.sent_count += 1
+        if self.fail_mode == 'reject':
+            return dict(retcode=10006, comment='rejected', ticket=None)
+        self._next += 1
+        tk = self._next
+        if self.fail_mode == 'silent':
+            return dict(retcode=10009, comment='done', ticket=tk)   # DONE tanpa posisi
+        self._pos[tk] = dict(ticket=tk, type=0, volume=lot, price_open=price, sl=sl, tp=tp,
+                             profit=0.0, time=int(time.time()*1000), symbol='SIM',
+                             magic=20250904, comment=cid)
+        if self.fail_mode == 'timeout':
+            raise TimeoutError("koneksi putus setelah order terkirim")
+        return dict(retcode=10009, comment='done', ticket=tk)
+
+    def positions(self): return list(self._pos.values())
+    def close(self, tk):
+        p = self._pos.pop(tk, None)
+        if p: self._deals.append(dict(ticket=tk, deal=tk, type=1, entry=1, volume=p['volume'],
+                                      price=p['price_open'], profit=0.0, commission=0.0,
+                                      swap=0.0, comment=p['comment'], magic=p['magic'],
+                                      time=int(time.time()*1000)))

@@ -2,10 +2,10 @@
 
 Dashboard lokal untuk menjalankan jurnal MHF-20 di laptop Anda, membaca MetaTrader 5.
 
-> **READ-ONLY.** Sistem ini **tidak pernah mengirim order**. Ia memantau harga, mendeteksi
-> sinyal, mencatat **alasan lengkap** setiap keputusan, dan merekonsiliasi posisi Anda.
-> Eksekusi tetap manual di MT5 — sengaja, agar jurnal 5 hari tidak tercemar oleh
-> kegagalan otomasi order.
+> **AUTO-EXECUTE AKTIF.** Sistem mengirim order sungguhan ke MT5, mengelola TP1/BE/
+> time-stop, dan mencatat semuanya. Dirancang agar **tidak mungkin menggandakan posisi**
+> walau laptop mati tepat saat order dikirim — lihat `EKSEKUSI_OTOMATIS.md`.
+> `DEMO_ONLY=True` menolak eksekusi bila mendeteksi akun REAL.
 
 ---
 
@@ -14,7 +14,7 @@ Dashboard lokal untuk menjalankan jurnal MHF-20 di laptop Anda, membaca MetaTrad
 1. Buka **MetaTrader 5**, login ke akun **demo Exness**.
 2. Pastikan **XAUUSDm** ada di *Market Watch* (klik kanan → Show All bila belum).
 3. Aktifkan **Tools → Options → Expert Advisors → Allow automated trading**
-   (dibutuhkan agar Python bisa *membaca* data, bukan untuk trading).
+   (wajib — tanpa ini order akan ditolak).
 4. Klik dua kali **`run.bat`**.
 5. Buka **http://127.0.0.1:8765**
 
@@ -34,7 +34,8 @@ jurnal lanjut di hari yang benar, bukan reset ke hari 1.
 | **Chart M5** | Candle update ~per detik, garis BSL / SSL / MA240-H4, penanda ▲ sinyal valid dan · sinyal ditolak |
 | **Kenapa entry / kenapa tidak** | **9 syarat**, tiap baris: lolos/gagal, nilai konkret, dan alasan mengapa syarat itu ada |
 | **Ringkasan jurnal** | Trade, win rate, PF, net, ekspektasi ($ dan R), sinyal valid vs ditolak |
-| **Tab Posisi/Sinyal/Trade/Log** | Posisi MT5 live, riwayat sinyal, trade, dan log kejadian sistem |
+| **Tab Posisi/Sinyal/Order/Trade/Log** | Posisi live, riwayat sinyal, **status tiap order (intent)**, trade, log |
+| **Tombol kontrol** | AUTO ON/OFF · TUTUP SEMUA (panic close) · banner beku (klik = rekonsiliasi) |
 
 Contoh baris alasan yang tercatat:
 
@@ -79,12 +80,12 @@ jadi harapan teoretisnya hanya **≈ +1,2R (~$24)** — dan sebaran acaknya jauh
 dari itu. **Lima hari tidak bisa membuktikan atau menggugurkan strategi ini.**
 
 Yang benar-benar diuji dalam 5 hari:
-1. Apakah sinyal muncul pada frekuensi yang diharapkan?
+1. Apakah sinyal muncul pada frekuensi yang diharapkan (~2,5/hari)?
 2. Apakah spread & slippage Exness sesuai asumsi backtest ($0,337 median)?
 3. Berapa besar **swap** pada posisi long yang menginap? (risiko terbesar yang belum dimodelkan)
-4. Apakah Anda sanggup mengeksekusi tanpa menyimpang dari aturan?
+4. Apakah eksekusi otomatis berjalan benar: lot tepat, SL/TP terpasang, TP1 & BE jalan?
 
-Nilai keberhasilan dari **kepatuhan**, bukan dari PnL.
+Nilai keberhasilan dari **kebenaran eksekusi**, bukan dari PnL.
 
 ---
 
@@ -92,6 +93,7 @@ Nilai keberhasilan dari **kepatuhan**, bukan dari PnL.
 
 ```
 config.py          satu-satunya sumber parameter
+executor.py        pengiriman order + write-ahead intent + rekonsiliasi
 signal_engine.py   mesin sinyal (terbukti identik dengan backtest)
 store.py           SQLite WAL, idempotent, crash-safe
 mt5_bridge.py      koneksi MT5 read-only + auto-reconnect (+ ReplayBridge)

@@ -34,7 +34,7 @@ Diperbaiki → `WARMUP_BARS = 26000`. Uji nomor [9] sekarang menjaga invarian in
 
 ---
 
-## B. Ketahanan — **20 / 20 LULUS**
+## B. Ketahanan — **25 / 25 LULUS**
 
 | # | Uji | Hasil |
 |---|---|---|
@@ -45,7 +45,7 @@ Diperbaiki → `WARMUP_BARS = 26000`. Uji nomor [9] sekarang menjaga invarian in
 | 5 | Rekonsiliasi trade yang tertutup saat program mati | LULUS ×2 |
 | 6 | Semua panggilan MT5 aman saat terminal mati (return `None`/`[]`, tidak crash) | LULUS |
 | 7 | Anti-repaint: sinyal hanya dari bar tertutup | LULUS ×2 |
-| 8 | READ-ONLY: nol `order_send` / `TRADE_ACTION_DEAL` di seluruh kode | LULUS |
+| 8 | Order hanya lewat `executor.py`; intent ditulis sebelum kirim; UNIQUE per bar; client_id di comment; verifikasi pasca-kirim; proteksi akun real | LULUS ×6 |
 | 9 | `WARMUP_BARS` ≥ kebutuhan MA240 H4 (26.000 ≥ 11.520) | LULUS |
 | 10 | Guardrail memblokir: slot penuh, limit rugi harian, kill-switch DD | LULUS ×3 |
 
@@ -89,11 +89,9 @@ Log pemulihan: `Melanjutkan jurnal hari ke-1 dari 5` · `Gap-fill: 26.001 bar, 0
 
 ## E. Batasan yang diakui jujur
 
-1. **Read-only.** Sistem tidak mengirim order. Anda eksekusi manual di MT5.
-   Ini disengaja: order otomatis menambah kelas kegagalan (order nyangkut, duplikasi saat
-   reconnect) yang justru merusak data jurnal 5 hari.
-2. **Rekonsiliasi berbasis ticket.** Trade yang Anda buka manual akan tercatat, tapi
-   pemetaan ke sinyal spesifik bersifat perkiraan waktu — beri catatan manual bila perlu.
+1. **Auto-execute aktif** — audit jalur order ada di `EKSEKUSI_OTOMATIS.md` (37/37 lulus,
+   termasuk skenario order-masuk-tapi-jawaban-hilang).
+2. **Slippage/requote nyata** hanya terukur saat live; backtest memakai $0,02.
 3. **5 hari ≈ 10–13 trade.** Terlalu sedikit untuk menilai profitabilitas
    (edge +0,100R butuh ratusan trade). Jurnal ini menguji **eksekusi dan kepatuhan**,
    bukan membuktikan strategi. Lihat `../docs/HONEST_LIMITS.md`.

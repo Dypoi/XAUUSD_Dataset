@@ -42,6 +42,12 @@ td{padding:5px 8px;border-bottom:1px solid var(--bd);font-variant-numeric:tabula
 .banner{padding:8px 14px;font-weight:600;text-align:center;display:none}
 .banner.show{display:block}
 .pill{font-size:10px;padding:1px 6px;border-radius:8px;background:var(--pn2);color:var(--dim)}
+.btn{background:var(--pn2);color:var(--tx);border:1px solid var(--bd);padding:4px 10px;
+border-radius:5px;cursor:pointer;font-size:11px;font-weight:600}
+.btn:hover{border-color:var(--acc)}
+.btn.danger{background:rgba(239,83,80,.15);color:var(--dn);border-color:var(--dn)}
+.freeze{background:var(--dn);color:#fff;padding:9px 14px;font-weight:700;text-align:center;display:none}
+.freeze.show{display:block}
 .legend{display:flex;gap:12px;font-size:10.5px;color:var(--dim);padding:4px 12px;flex-wrap:wrap}
 .lg{display:flex;gap:4px;align-items:center}.sw{width:14px;height:2px;display:inline-block}
 </style></head><body>
@@ -58,9 +64,15 @@ td{padding:5px 8px;border-bottom:1px solid var(--bd);font-variant-numeric:tabula
   <div class="kv"><span class="l">EQUITY</span><span class="v" id="eq">—</span></div>
   <div class="kv"><span class="l">PnL HARI INI</span><span class="v" id="dpnl">—</span></div>
   <div class="kv"><span class="l">POSISI</span><span class="v" id="npos">0/8</span></div>
-  <span style="margin-left:auto" class="pill" id="clock">—</span>
+  <span id="auto" class="badge bad">AUTO —</span>
+  <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+    <span class="pill" id="clock">—</span>
+    <button id="btnAuto" class="btn">Auto ON/OFF</button>
+    <button id="btnPanic" class="btn danger">TUTUP SEMUA</button>
+  </span>
 </div>
 <div id="banner" class="banner"></div>
+<div id="freeze" class="freeze"></div>
 
 <div class="grid">
  <div>
@@ -94,6 +106,7 @@ td{padding:5px 8px;border-bottom:1px solid var(--bd);font-variant-numeric:tabula
       <div class="tab on" data-t="pos">Posisi</div>
       <div class="tab" data-t="sig">Sinyal</div>
       <div class="tab" data-t="tr">Trade</div>
+      <div class="tab" data-t="int">Order</div>
       <div class="tab" data-t="ev">Log</div>
     </div>
     <div class="rz" id="tabbody" style="max-height:460px"></div>
@@ -151,6 +164,14 @@ function render(){
   $('eq').textContent=money(S.equity);
   const d=$('dpnl');d.textContent=money(S.day_pnl);d.className='v '+(S.day_pnl>=0?'g':'r');
   const np=(S.open_positions||[]).length;$('npos').textContent=`${np}/8`;
+  const ab=$('auto');
+  ab.textContent='AUTO '+(S.auto_execute?'ON':'OFF');
+  ab.className='badge '+(S.auto_execute?'ok':'bad');
+  const fz=$('freeze');
+  if(S.frozen){fz.textContent='⚠ EKSEKUSI DIBEKUKAN — '+(S.freeze_reason||'')+
+    ' · Sistem TIDAK akan mengirim order sampai status order lama dipastikan. Klik "Order" untuk detail.';
+    fz.classList.add('show');}
+  else fz.classList.remove('show');
   $('clock').textContent=new Date().toLocaleTimeString('id-ID')+' · uptime '+Math.floor((S.uptime_s||0)/60)+'m';
   verdict();
 }
@@ -181,7 +202,8 @@ function summary(){
     ['Profit Factor',r.profit_factor==null?'—':fx(r.profit_factor,3)],
     ['Net',money(r.net)],['Ekspektasi',money(r.expectancy)],
     ['Dalam R',fx(r.expectancy_R,3)+'R'],
-    ['Sinyal valid',r.signals_passed??0],['Ditolak',r.signals_blocked??0]];
+    ['Sinyal valid',r.signals_passed??0],['Ditolak',r.signals_blocked??0],
+    ['Order hari ini',(S.orders_today??0)+'/12']];
   $('summary').innerHTML=it.map(([l,v])=>{
     const neg=String(v).startsWith('-');
     return `<div><div class="l">${l}</div><div class="v ${neg?'r':''}">${v}</div></div>`}).join('');
@@ -219,6 +241,16 @@ async function loadTab(){
       <td>${x.lot??'—'}</td><td class="${(x.pnl||0)>=0?'g':'r'}">${x.pnl==null?'—':money(x.pnl)}</td>
       <td class="dim">${x.status}</td></tr>`).join('')+'</table>'
       :'<div class="b dim">Belum ada trade.</div>';
+  }
+  if(TAB==='int'){
+    const d=await fetch('/api/intents?limit=80').then(r=>r.json()).catch(()=>({intents:[]}));
+    const it=d.intents||[];
+    const col={FILLED:'g',REJECTED:'r',ORPHAN:'r',ABANDONED:'dim',PENDING:'dim',SENT:'dim',RESOLVED:'dim'};
+    b.innerHTML=it.length?`<table><tr><th>Waktu</th><th>Status</th><th>Lot</th><th>Ticket</th><th>Keterangan</th></tr>`+
+      it.map(x=>`<tr><td>${new Date(x.requested_ts).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'})}</td>
+      <td class="${col[x.state]||'dim'}"><b>${x.state}</b></td><td>${x.lot??'—'}</td>
+      <td>${x.ticket??'—'}</td><td class="dim">${(x.last_error||x.comment||'').slice(0,50)}</td></tr>`).join('')+'</table>'
+      :'<div class="b dim">Belum ada order.</div>';
   }
   if(TAB==='ev'){
     const d=await fetch('/api/events?limit=120').then(r=>r.json()).catch(()=>({events:[]}));
@@ -281,5 +313,19 @@ function draw(){
     cx.beginPath();cx.moveTo(PL,ty);cx.lineTo(PL+cw,ty);cx.stroke();cx.setLineDash([]);}
 }
 window.addEventListener('resize',draw);
+$('btnAuto').onclick=async()=>{
+  const r=await fetch('/api/toggle_auto',{method:'POST'}).then(r=>r.json());
+  alert('Auto-execute sekarang: '+(r.auto_execute?'AKTIF':'MATI'));};
+
+$('btnPanic').onclick=async()=>{
+  if(!confirm('Tutup SEMUA posisi MHF-20 sekarang?'))return;
+  const r=await fetch('/api/panic',{method:'POST'}).then(r=>r.json());
+  alert(r.ok?`${r.closed} posisi ditutup.`:'Gagal: '+(r.reason||''));};
+
+$('freeze').onclick=async()=>{
+  if(!confirm('Jalankan rekonsiliasi ulang untuk mencabut pembekuan?'))return;
+  const r=await fetch('/api/unfreeze',{method:'POST'}).then(r=>r.json());
+  alert(r.frozen?'Masih beku: '+r.reason:'Pembekuan dicabut. Eksekusi aktif.');};
+
 connect();poll();setInterval(draw,1000);
 </script></body></html>

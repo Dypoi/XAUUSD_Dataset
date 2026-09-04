@@ -56,6 +56,29 @@ CREATE TABLE IF NOT EXISTS session(
   k TEXT PRIMARY KEY, v TEXT
 );
 
+-- ====================================================================
+-- INTENT: write-ahead log untuk order. INTI ANTI-DUPLIKASI.
+-- Baris ditulis + di-commit SEBELUM order dikirim ke MT5. Kalau proses
+-- mati kapan pun setelah itu, saat restart kita tahu ada order yang
+-- statusnya belum pasti dan wajib direkonsiliasi sebelum kirim apa pun.
+-- client_id unik = kunci idempotensi (juga ditanam di comment MT5).
+-- ====================================================================
+CREATE TABLE IF NOT EXISTS intents(
+  client_id TEXT PRIMARY KEY,     -- mis. MHF20-<bar_ts>-<nonce>
+  signal_ts INTEGER NOT NULL,     -- bar sinyal; 1 bar = maksimal 1 intent
+  symbol TEXT, direction TEXT,
+  lot REAL, sl REAL, tp REAL,
+  requested_ts INTEGER,           -- kapan intent ditulis (sebelum kirim)
+  sent_ts INTEGER,                -- kapan order_send benar-benar dipanggil
+  state TEXT NOT NULL,            -- PENDING|SENT|FILLED|REJECTED|ORPHAN|RESOLVED|ABANDONED
+  ticket INTEGER,                 -- diisi setelah fill terkonfirmasi
+  retcode INTEGER, comment TEXT,
+  fill_price REAL, attempts INTEGER DEFAULT 0,
+  last_error TEXT,
+  UNIQUE(signal_ts, symbol)       -- 1 bar sinyal = 1 order. Anti-dobel struktural.
+);
+CREATE INDEX IF NOT EXISTS ix_intent_state ON intents(state);
+
 CREATE INDEX IF NOT EXISTS ix_bars_ts ON bars(ts);
 CREATE INDEX IF NOT EXISTS ix_sig_ts ON signals(ts);
 CREATE INDEX IF NOT EXISTS ix_ev_ts ON events(ts);
@@ -188,6 +211,48 @@ class Store:
         if not r: return default
         try: return json.loads(r["v"])
         except Exception: return default
+
+    # ---------- intents (write-ahead order log) ----------
+    def create_intent(self, client_id, signal_ts, symbol, direction, lot, sl, tp):
+        """Tulis + COMMIT intent SEBELUM order dikirim.
+
+        Return None bila bar sinyal ini sudah punya intent (anti-dobel struktural).
+        """
+        try:
+            with self.tx() as cx:
+                cx.execute("""INSERT INTO intents(client_id,signal_ts,symbol,direction,lot,sl,tp,
+                              requested_ts,state,attempts)
+                              VALUES(?,?,?,?,?,?,?,?, 'PENDING',0)""",
+                           (client_id, int(signal_ts), symbol, direction, lot, sl, tp, now_ms()))
+            return client_id
+        except sqlite3.IntegrityError:
+            return None
+
+    def mark_intent(self, client_id, **kw):
+        if not kw: return
+        sets = ",".join(f"{k}=?" for k in kw)
+        with self.tx() as cx:
+            cx.execute(f"UPDATE intents SET {sets} WHERE client_id=?",
+                       list(kw.values()) + [client_id])
+
+    def intent(self, client_id):
+        r = self._c.execute("SELECT * FROM intents WHERE client_id=?", (client_id,)).fetchone()
+        return dict(r) if r else None
+
+    def intent_for_bar(self, symbol, signal_ts):
+        r = self._c.execute("SELECT * FROM intents WHERE symbol=? AND signal_ts=?",
+                            (symbol, int(signal_ts))).fetchone()
+        return dict(r) if r else None
+
+    def unresolved_intents(self):
+        """Intent yang nasibnya belum pasti — WAJIB diselesaikan saat startup."""
+        return [dict(r) for r in self._c.execute(
+            "SELECT * FROM intents WHERE state IN ('PENDING','SENT','ORPHAN') ORDER BY requested_ts"
+        ).fetchall()]
+
+    def intents(self, limit=200):
+        return [dict(r) for r in self._c.execute(
+            "SELECT * FROM intents ORDER BY requested_ts DESC LIMIT ?", (limit,)).fetchall()]
 
     def close(self):
         with _LOCK:

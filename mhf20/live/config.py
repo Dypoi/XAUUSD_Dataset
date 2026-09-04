@@ -45,7 +45,15 @@ class LiveConfig:
     STALE_TICK_SEC: int = 20         # tidak ada tick selama ini -> status DEGRADED
 
     ALERT_SOUND: bool = True
-    READ_ONLY: bool = True           # TIDAK PERNAH kirim order. Jangan diubah.
+
+    # --- EKSEKUSI OTOMATIS ---
+    AUTO_EXECUTE: bool = True        # kirim order sungguhan ke MT5
+    DEMO_ONLY: bool = True           # tolak eksekusi bila akun REAL terdeteksi
+    MAX_ORDERS_PER_DAY: int = 12     # rem tambahan (backtest ~2,54/hari)
+    MAX_SEND_ATTEMPTS: int = 3
+    MAX_SLIPPAGE_POINTS: int = 30    # deviation ~ $0,30
+    MIN_FREE_MARGIN: float = 200.0   # USD, berhenti bila margin bebas menipis
+    MANAGE_INTERVAL_S: int = 3       # cek TP1/BE/time-stop tiap N detik
 
 CFG = LiveConfig()
 def as_dict(): return asdict(CFG)
