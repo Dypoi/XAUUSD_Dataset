@@ -152,11 +152,29 @@ Tutup dengan Ctrl+C, lalu jalankan `run.bat` untuk mode sungguhan.
 | Mulai / lanjut jurnal | `run.bat` |
 | Berhenti | `Ctrl + C` di jendela CMD |
 | Buka dashboard | browser → `http://127.0.0.1:8765` |
-| Ambil update terbaru | `git pull origin arena/01a067ae-xauusd-dataset` (dari folder `MHF20`) |
+| Ambil update terbaru | lihat bagian **Update** di bawah |
 | Jalankan audit | `.venv\Scripts\python tests\test_execution.py` |
 
 **Aman ditutup kapan saja.** Data tersimpan di `data\journal.db`. Saat dijalankan lagi,
 jurnal lanjut di hari yang benar — bukan mulai dari nol.
+
+### Update ke versi terbaru
+
+Dari folder `MHF20` (bukan `mhf20\live`):
+
+```cmd
+cd %USERPROFILE%\Desktop\MHF20
+git fetch --depth 1 origin arena/01a067ae-xauusd-dataset
+git reset --hard FETCH_HEAD
+```
+
+> Pakai `git fetch` + `reset`, **bukan `git pull`** — clone dangkal (`--depth 1`) tidak
+> punya riwayat lengkap sehingga `git pull` akan gagal dengan
+> *"Not possible to fast-forward"*. Sudah diuji.
+
+> ⚠️ `reset --hard` menimpa perubahan lokal pada file program. Jurnal Anda di
+> `data\journal.db` **tidak ikut terhapus** (folder `data` diabaikan Git), tapi kalau
+> Anda mengedit `config.py` sendiri, salin dulu.
 
 ---
 
