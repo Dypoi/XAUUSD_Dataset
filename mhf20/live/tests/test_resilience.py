@@ -124,5 +124,22 @@ raw=260
 chk("digits=3 -> $0.260", abs(raw*0.001-0.260)<1e-9, f"(lama: ${raw/100:.3f})")
 chk("guard $1.2 melewatkan spread normal", 0.26 <= 1.2)
 
+print("\n[19] Deviation dikonversi dari USD (bukan point mentah)")
+ex=open(os.path.join(_L,'executor.py')).read()
+cf=open(os.path.join(_L,'config.py')).read()
+chk("tidak ada MAX_SLIPPAGE_POINTS", "MAX_SLIPPAGE_POINTS" not in ex and "MAX_SLIPPAGE_POINTS" not in cf)
+chk("dev dihitung dari point simbol", "MAX_SLIPPAGE_USD / info.point" in ex)
+chk("digits=3 -> 300 point = $0.30", abs(int(round(0.30/0.001))*0.001-0.30)<1e-9)
+
+print("\n[20] Zona waktu server broker dikonversi ke UTC")
+mb=open(os.path.join(_L,'mt5_bridge.py')).read()
+chk("ada deteksi offset server", "_detect_server_offset" in mb)
+chk("offset diterapkan ke timestamp bar", "- off_ms" in mb)
+chk("dipanggil saat connect", "self._detect_server_offset()" in mb)
+
+print("\n[21] Contract size diambil dari broker")
+chk("baca trade_contract_size", "trade_contract_size" in ex)
+chk("lot dikoreksi bila beda", "c.CONTRACT_SIZE / cs" in ex)
+
 print(f"\n{'='*54}\nLULUS {P} · GAGAL {F}")
 sys.exit(1 if F else 0)

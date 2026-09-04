@@ -60,8 +60,8 @@ cd mhf20\live
 .venv\Scripts\python tests\test_resilience.py
 ```
 
-Harus berakhir dengan **`LULUS 37 · GAGAL 0`**.
-Kalau masih 32 atau 25, berarti update belum masuk.
+Harus berakhir dengan **`LULUS 45 · GAGAL 0`**.
+Kalau masih 37 atau kurang, berarti update belum masuk.
 
 ### Cek C — spread cocok dengan broker
 
@@ -69,8 +69,11 @@ Kalau masih 32 atau 25, berarti update belum masuk.
 .venv\Scripts\python cek_spread.py
 ```
 
-Angka **Spread NYATA (ask-bid)** harus mirip yang diiklankan Exness (~$0,26),
-dan statusnya **LOLOS**.
+Sekarang alat ini juga menampilkan **offset server broker**, **contract size**, dan
+**lot + risiko nyata**. Yang perlu dicek:
+- Spread NYATA mirip iklan Exness (~$0,26) dan status **LOLOS**
+- Contract size **100 oz/lot**
+- Risiko nyata mendekati **$20**
 
 ### Cek D — lihat dashboard
 
@@ -88,6 +91,9 @@ dan statusnya **LOLOS**.
 | **Candle tersendat** | Rantai polling 2s + 3s + 1s = **6 detik** | Bar berjalan digerakkan tick tiap **0,25 detik** |
 | **Polling lambat** | runner 2s, browser 3s | runner 0,6s, browser 1s |
 | **Spread bar 10× lipat** | `spread/100` → `$2,600` pada XAUUSDm (digits=3) → **guard memblokir SEMUA entry** | `spread × point` → `$0,260`, plus jaring pengaman ask-bid |
+| **Zona waktu server** | Bar ber-timestamp waktu server (GMT+2/+3), sinyal pakai UTC → **~19% sinyal berbeda** | Offset dideteksi otomatis, bar dikonversi ke UTC |
+| **Deviation 10× ketat** | `30 point` = $0,03 pada digits=3, bukan $0,30 → sering requote | `MAX_SLIPPAGE_USD` dikonversi via `info.point` |
+| **Contract size** | Hardcoded 100 oz | Dibaca dari broker, lot dikoreksi otomatis |
 
 Bug candle-BID adalah yang paling penting. Sinyal MHF-20 membandingkan harga secara
 presisi (sweep BSL, break swing high, FVG buffer $0,30), jadi pergeseran setengah spread
@@ -95,7 +101,8 @@ bisa memicu atau membatalkan entry yang seharusnya tidak.
 
 Uji regresi [16] dan [17] ditambahkan supaya bug ini tidak terulang.
 
-**Status audit:** paritas 191/191 · ketahanan **37/37** · eksekusi 37/37.
+**Status audit:** paritas 191/191 · ketahanan **45/45** · eksekusi 37/37.
+Rincian audit putaran 2: lihat `AUDIT_PUTARAN_2.md`.
 
 ### Riwayat perbaikan
 - `cbfab5a` candle BID→MID + latensi 6s→1s

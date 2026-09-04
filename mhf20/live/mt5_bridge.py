@@ -25,6 +25,7 @@ class MT5Bridge:
         self.connected = False
         self.log = logger or (lambda *a, **k: None)
         self._fail = 0
+        self.server_offset_h = 0
         self._lock = threading.RLock()
         self.account = {}
 
@@ -51,6 +52,7 @@ class MT5Bridge:
                     self.log("WARN", "MT5", "AKUN INI REAL, bukan demo. Jurnal dirancang untuk demo.")
                 if not self._resolve_symbol():
                     return False
+                self._detect_server_offset()
                 self.connected = True; self._fail = 0
                 self.log("INFO", "MT5", f"Terhubung: {ai.login}@{ai.server} simbol={self.symbol}")
                 return True
@@ -58,6 +60,29 @@ class MT5Bridge:
                 self.log("ERROR", "MT5", f"exception connect: {e}")
                 self.connected = False
                 return False
+
+    def _detect_server_offset(self):
+        """Cari selisih jam server broker vs UTC.
+
+        Bar MT5 ber-timestamp WAKTU SERVER (Exness umumnya GMT+2/+3, ikut DST),
+        sedangkan sinyal MHF-20 memakai jendela sesi berbasis UTC. Tanpa koreksi
+        ini ~19% sinyal berbeda dari backtest.
+        """
+        try:
+            t = mt5.symbol_info_tick(self.symbol)
+            if not t:
+                self.server_offset_h = 0; return
+            import time as _t
+            srv = int(t.time)                       # detik, waktu server
+            utc = int(_t.time())                    # detik, UTC nyata
+            off = round((srv - utc) / 3600.0)
+            self.server_offset_h = int(max(-12, min(14, off)))
+            self.log("INFO", "MT5",
+                     f"Offset server broker: GMT{self.server_offset_h:+d} "
+                     f"(bar akan dikonversi ke UTC)")
+        except Exception as e:
+            self.server_offset_h = 0
+            self.log("WARN", "MT5", f"Gagal deteksi offset server: {e}")
 
     def _resolve_symbol(self) -> bool:
         order = [self.symbol] + [c for c in CANDIDATES if c != self.symbol]
@@ -128,6 +153,7 @@ class MT5Bridge:
             # menghasilkan nilai 10x lipat dan MEMBLOKIR SEMUA ENTRY.
             tk = mt5.symbol_info_tick(self.symbol)
             live_sp = float(tk.ask - tk.bid) if tk else None
+            off_ms = int(getattr(self, 'server_offset_h', 0)) * 3600 * 1000
             out = []
             for x in r:
                 sp = float(x['spread']) * point      # spread bar dalam USD
@@ -136,7 +162,7 @@ class MT5Bridge:
                 if live_sp and live_sp > 0 and (sp > live_sp * 20 or sp <= 0):
                     sp = live_sp
                 h = sp / 2.0                          # bid -> mid
-                out.append(dict(ts=int(x['time']) * 1000,
+                out.append(dict(ts=int(x['time']) * 1000 - off_ms,
                                 open=float(x['open']) + h, high=float(x['high']) + h,
                                 low=float(x['low']) + h, close=float(x['close']) + h,
                                 spread=sp, volume=float(x['tick_volume'])))

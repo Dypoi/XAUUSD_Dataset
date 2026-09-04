@@ -246,11 +246,23 @@ class Executor:
                 if price - sl < stop_lvl: sl = round(price - stop_lvl * 1.2, digits)
                 if tp - price < stop_lvl: tp = round(price + stop_lvl * 1.2, digits)
 
-            lot = self._norm_lot(ev.lot, info)
+            # Contract size broker bisa != 100 oz. Kalau beda, lot dari
+            # signal_engine (yang memakai CONTRACT_SIZE=100) akan salah risiko.
+            cs = float(getattr(info, 'trade_contract_size', c.CONTRACT_SIZE) or c.CONTRACT_SIZE)
+            lot_req = ev.lot
+            if abs(cs - c.CONTRACT_SIZE) > 1e-9:
+                lot_req = ev.lot * (c.CONTRACT_SIZE / cs)
+                self.log("WARN", "EXEC",
+                         f"Contract size broker {cs} != {c.CONTRACT_SIZE}; lot dikoreksi "
+                         f"{ev.lot} -> {lot_req:.2f} agar risiko tetap ${c.RISK_PER_POSITION}")
+            lot = self._norm_lot(lot_req, info)
             if lot <= 0:
                 self.s.mark_intent(cid, state="ABANDONED", last_error="lot tidak valid")
                 return dict(ok=False, reason="Lot tidak valid")
 
+            # deviation MT5 dalam POINT. Konversi dari USD sesuai digits simbol,
+            # kalau tidak: digits=3 bikin toleransi 10x terlalu ketat -> requote.
+            dev = max(1, int(round(c.MAX_SLIPPAGE_USD / info.point)))
             req = {
                 "action": mt5.TRADE_ACTION_DEAL,
                 "symbol": self.b.symbol,
@@ -259,7 +271,7 @@ class Executor:
                 "price": price,
                 "sl": sl,
                 "tp": tp,
-                "deviation": c.MAX_SLIPPAGE_POINTS,
+                "deviation": dev,
                 "magic": MAGIC,
                 "comment": cid,                      # identitas idempotensi
                 "type_time": mt5.ORDER_TIME_GTC,
@@ -374,7 +386,7 @@ class Executor:
                             "action": mt5.TRADE_ACTION_DEAL, "symbol": self.b.symbol,
                             "volume": half, "type": mt5.ORDER_TYPE_SELL,
                             "position": p["ticket"], "price": tick.bid,
-                            "deviation": c.MAX_SLIPPAGE_POINTS, "magic": MAGIC,
+                            "deviation": max(1, int(round(c.MAX_SLIPPAGE_USD / info.point))), "magic": MAGIC,
                             "comment": f"{cid}-TP1",
                             "type_time": mt5.ORDER_TIME_GTC,
                             "type_filling": self._filling(info)})
@@ -395,7 +407,7 @@ class Executor:
                         "action": mt5.TRADE_ACTION_DEAL, "symbol": self.b.symbol,
                         "volume": p["volume"], "type": mt5.ORDER_TYPE_SELL,
                         "position": p["ticket"], "price": tick.bid,
-                        "deviation": c.MAX_SLIPPAGE_POINTS, "magic": MAGIC,
+                        "deviation": max(1, int(round(c.MAX_SLIPPAGE_USD / info.point))), "magic": MAGIC,
                         "comment": f"{cid}-TIME", "type_time": mt5.ORDER_TIME_GTC,
                         "type_filling": self._filling(info)})
                     if cr and cr.retcode == mt5.TRADE_RETCODE_DONE:

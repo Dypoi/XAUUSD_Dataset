@@ -52,6 +52,37 @@ else:
     print(f"  STATUS: DIBLOKIR — spread sedang lebar (${real:.3f} > ${CFG.MAX_SPREAD_USD})")
     print("          Normal saat rollover 00:00 server atau rilis berita.")
 
+# ---- pemeriksaan lingkungan tambahan ----
+import time as _t
+print(f"\n{'-'*58}\n  PEMERIKSAAN LINGKUNGAN\n{'-'*58}")
+
+srv = int(tk.time); utc = int(_t.time())
+off = round((srv - utc) / 3600.0)
+print(f"  Waktu server broker  : GMT{off:+.0f}")
+if off == 0:
+    print("    -> sama dengan UTC, tidak perlu koreksi")
+else:
+    print(f"    -> bar digeser {off:+.0f} jam ke UTC otomatis (window sesi jadi benar)")
+
+dev = max(1, int(round(CFG.MAX_SLIPPAGE_USD / si.point)))
+print(f"  Toleransi slippage   : ${CFG.MAX_SLIPPAGE_USD} = {dev} point")
+
+cs = float(getattr(si, "trade_contract_size", 100.0) or 100.0)
+print(f"  Contract size broker : {cs:g} oz/lot", end="")
+print("  (sesuai asumsi)" if abs(cs-100.0) < 1e-9 else f"  <-- BEDA dari 100, lot akan dikoreksi")
+
+sl_eff = CFG.SL_USD + real + 0.02
+lot = round(CFG.RISK_PER_POSITION / (sl_eff * cs), 2)
+lot = max(si.volume_min, min(si.volume_max, lot))
+risk = lot * cs * sl_eff
+print(f"  Lot utk risiko ${CFG.RISK_PER_POSITION}  : {lot} lot  -> risiko nyata ${risk:.2f}")
+if abs(risk - CFG.RISK_PER_POSITION) > CFG.RISK_PER_POSITION * 0.35:
+    print(f"    PERINGATAN: risiko nyata jauh dari target (volume_min={si.volume_min})")
+
+print(f"  Stops level minimum  : {si.trade_stops_level} point (${si.trade_stops_level*si.point:.2f})")
+if si.trade_stops_level * si.point > CFG.SL_USD:
+    print("    PERINGATAN: lebih besar dari SL $12 — SL akan dilebarkan broker")
+
 print(f"\n  Asumsi backtest: median $0.337 (~3.4 pips)")
 print(f"  Iklan Exness   : ~$0.26")
 if real > 1.2:

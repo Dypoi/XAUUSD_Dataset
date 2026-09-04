@@ -51,7 +51,7 @@ class LiveConfig:
     DEMO_ONLY: bool = True           # tolak eksekusi bila akun REAL terdeteksi
     MAX_ORDERS_PER_DAY: int = 12     # rem tambahan (backtest ~2,54/hari)
     MAX_SEND_ATTEMPTS: int = 3
-    MAX_SLIPPAGE_POINTS: int = 30    # deviation ~ $0,30
+    MAX_SLIPPAGE_USD: float = 0.30   # dikonversi ke point sesuai digits simbol
     MIN_FREE_MARGIN: float = 200.0   # USD, berhenti bila margin bebas menipis
     MANAGE_INTERVAL_S: int = 3       # cek TP1/BE/time-stop tiap N detik
 
