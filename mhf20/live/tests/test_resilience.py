@@ -168,5 +168,43 @@ chk("waktu bar UTC", "utcDT(bs[bs.length-1].ts)" in h)
 chk("tidak ada format zona lokal tersisa",
     "toLocaleString('id-ID',{day" not in h)
 
+print("\n[23] Filter kualitas tren H4 (slope + jarak) sinkron backtest<->live")
+import importlib.util as _iu
+_sp=os.path.join(os.path.dirname(_L),'strategy.py')
+_st=open(_sp).read()
+_se=open(os.path.join(_L,'signal_engine.py')).read()
+_cf=open(os.path.join(_L,'config.py')).read()
+chk("strategy.py punya BIAS_SLOPE_BARS", "BIAS_SLOPE_BARS" in _st)
+chk("strategy.py punya BIAS_MIN_DIST_PCT", "BIAS_MIN_DIST_PCT" in _st)
+chk("live config punya kedua field", "BIAS_SLOPE_BARS" in _cf and "BIAS_MIN_DIST_PCT" in _cf)
+chk("signal_engine pakai slope", "ma.shift(CFG.BIAS_SLOPE_BARS)" in _se)
+chk("signal_engine pakai jarak", "CFG.BIAS_MIN_DIST_PCT" in _se)
+
+# nilai konfigurasi WAJIB identik, kalau tidak paritas pecah diam-diam
+import re as _re
+def _grab(txt, name, cast):
+    m=_re.search(name+r"\s*:\s*\w+\s*=\s*([-\d.]+)", txt)
+    return cast(m.group(1)) if m else None
+for _n,_c in [("BIAS_SLOPE_BARS",int),("BIAS_MIN_DIST_PCT",float),("BIAS_MA_H4",int)]:
+    a=_grab(_st,_n,_c); b=_grab(_cf,_n,_c)
+    chk(f"{_n} identik ({a} == {b})", a is not None and a==b)
+
+# filter harus benar-benar MENOLAK dan benar-benar MELOLOSKAN
+import numpy as _np, pandas as _pd
+def _bias(sl_bars, mind, series):
+    h4=_pd.Series(series, index=_pd.date_range('2024-01-01', periods=len(series), freq='4h'))
+    ma=h4.rolling(3).mean()
+    b=h4>ma
+    if sl_bars>0: b=b & (ma>ma.shift(sl_bars))
+    if mind>0:    b=b & ((h4/ma-1)*100>mind)
+    return b
+_naik=[100+i for i in range(20)]
+chk("tren naik sehat -> LOLOS", bool(_bias(2,0.5,_naik).iloc[-1]))
+_datar=[100+0.001*i for i in range(20)]
+chk("harga mendempet MA -> DITOLAK", not bool(_bias(2,0.5,_datar).iloc[-1]))
+_turun=[120-i for i in range(20)]
+chk("MA berbalik turun -> DITOLAK", not bool(_bias(2,0.5,_turun).iloc[-1]))
+chk("filter mati (0,0) = perilaku v1.0", bool(_bias(0,0.0,_datar).iloc[-1]))
+
 print(f"\n{'='*54}\nLULUS {P} · GAGAL {F}")
 sys.exit(1 if F else 0)

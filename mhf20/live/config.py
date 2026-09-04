@@ -25,6 +25,8 @@ class LiveConfig:
     FVG_BUFFER: float = 0.30
     SWING_LOOKBACK: int = 6
     BIAS_MA_H4: int = 240
+    BIAS_SLOPE_BARS: int = 30       # MA240 H4 harus menanjak (~5 hari); WAJIB sama dgn strategy.py
+    BIAS_MIN_DIST_PCT: float = 0.50 # harga min 0.50% di atas MA240; WAJIB sama dgn strategy.py
     # Zona waktu server broker. Exness = GMT+0 (Help Center resmi), jadi 0.
     # None = deteksi otomatis (untuk broker GMT+2/+3 seperti IC Markets).
     # Isi angka di sini kalau Anda tahu pasti offset broker Anda.

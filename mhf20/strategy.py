@@ -3,11 +3,12 @@
 MHF-20  ·  Momentum Continuation, High-Frequency, Risk-$20
 XAUUSD Long-Only Trend-Aligned Breakout System
 ================================================================================
-Backtest 2016-09..2026-09 (9.8 thn, net bid/ask + slippage):
-  6,405 trades | 2.54 entry/hari | WR 53.51% | PF 1.203
-  $10,000 -> $19,881 (+98.8%, CAGR 7.25%) | MaxDD -12.51% | t-stat +6.69
-  Uji kontrol: PF +0.171 di atas entry acak
-  IS 1.145 / OOS 1.232
+Backtest 2016-09..2026-09 (9.8 thn, net bid/ask + slippage) -- v1.1:
+  4,905 trades | 2.03 entry/hari | WR 55.33% | PF 1.304
+  $10,000 -> $23,881 (+138.8%, CAGR 9.50%) | MaxDD -11.68% | t-stat +8.43
+  IS 1.276 / OOS 1.324 | tahan sampai +$0.50/sisi slippage (PF 1.006)
+  v1.1 = filter kualitas tren H4 (slope + jarak); lihat docs/FILTER_TREN.md
+  v1.0 (bias biner) = 6,274 trades | PF 1.213 | DD -14.47%
 
 PERINGATAN: sistem ini REAKTIF, bukan prediktif. Lihat docs/HONEST_LIMITS.md
 ================================================================================
@@ -27,6 +28,8 @@ class Config:
     FVG_BUFFER: float = 0.30        # USD, ambang Fair Value Gap
     SWING_LOOKBACK: int = 6         # bar untuk displacement (high[-6:-1])
     BIAS_MA_H4: int = 240           # MA H4 ~40 hari
+    BIAS_SLOPE_BARS: int = 30       # MA240 harus menanjak atas 30 bar H4 (~5 hari); 0 = mati
+    BIAS_MIN_DIST_PCT: float = 0.50 # harga min 0.50% di atas MA240; 0 = mati
     ASIA_END_HOUR: int = 7          # UTC, batas sesi Asia
     LONDON_END_HOUR: int = 12       # UTC, batas sesi London
 
@@ -82,9 +85,26 @@ def session_levels(df: pd.DataFrame, cfg: Config = CFG) -> pd.DataFrame:
 
 
 def macro_bias(df_m5: pd.DataFrame, cfg: Config = CFG) -> pd.Series:
-    """Bias bullish H4: close_H4 > MA240(close_H4). Reindex ffill = kausal."""
+    """Bias bullish H4: close_H4 > MA240(close_H4). Reindex ffill = kausal.
+
+    Sejak v1.1 diperkuat dua syarat KUALITAS TREN (lihat docs/FILTER_TREN.md):
+      1. MA240 harus MENANJAK (slope > 0 atas BIAS_SLOPE_BARS bar H4)
+         -> menolak rezim "MA masih di bawah harga tapi sudah berbalik turun"
+      2. Harga harus >= BIAS_MIN_DIST_PCT di atas MA240
+         -> menolak rezim mendempet MA (whipsaw), kantong rugi terbesar
+
+    Keduanya kausal: hanya memakai bar H4 yang sudah tertutup.
+    """
     h4 = df_m5['close'].resample('4h').last().dropna()
-    bull = h4 > h4.rolling(cfg.BIAS_MA_H4).mean()
+    ma = h4.rolling(cfg.BIAS_MA_H4).mean()
+
+    above = h4 > ma
+    bull = above
+    if cfg.BIAS_SLOPE_BARS > 0:
+        bull = bull & (ma > ma.shift(cfg.BIAS_SLOPE_BARS))
+    if cfg.BIAS_MIN_DIST_PCT > 0:
+        bull = bull & ((h4 / ma - 1.0) * 100.0 > cfg.BIAS_MIN_DIST_PCT)
+
     return bull.reindex(df_m5.index, method='ffill').fillna(False)
 
 

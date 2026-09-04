@@ -37,7 +37,12 @@ def macro_bias(df):
     if len(h4) < CFG.BIAS_MA_H4:
         return pd.Series(False, index=df.index), pd.Series(np.nan, index=df.index)
     ma = h4.rolling(CFG.BIAS_MA_H4).mean()
-    bull = (h4 > ma).reindex(df.index, method="ffill").fillna(False)
+    b = h4 > ma
+    if CFG.BIAS_SLOPE_BARS > 0:
+        b = b & (ma > ma.shift(CFG.BIAS_SLOPE_BARS))
+    if CFG.BIAS_MIN_DIST_PCT > 0:
+        b = b & ((h4 / ma - 1.0) * 100.0 > CFG.BIAS_MIN_DIST_PCT)
+    bull = b.reindex(df.index, method="ffill").fillna(False)
     maf = ma.reindex(df.index, method="ffill")
     return bull, maf
 
@@ -81,6 +86,8 @@ def evaluate_closed_bar(df: pd.DataFrame, n_open_positions: int, day_pnl: float,
     c_fvg = bool(bull_fvg.iloc[i])
     c_disp = c_bull_candle and (c_break or c_fvg)
     c_bias = bool(bull.iloc[i])
+    _ma = float(ma_h4.iloc[i]) if pd.notna(ma_h4.iloc[i]) else np.nan
+    _dist = ((px / _ma - 1.0) * 100.0) if (pd.notna(_ma) and _ma > 0) else np.nan
     c_spread = spr <= CFG.MAX_SPREAD_USD
     c_slots = n_open_positions < CFG.MAX_CONCURRENT
     c_dayloss = day_pnl > -CFG.DAILY_LOSS_LIMIT
@@ -98,9 +105,13 @@ def evaluate_closed_bar(df: pd.DataFrame, n_open_positions: int, day_pnl: float,
         dict(grup="Sinyal", k="Break swing / FVG", ok=bool(c_break or c_fvg),
              detail=f"break_swing={c_break} (swing={sh:.2f}) | FVG={c_fvg}" if pd.notna(sh) else f"FVG={c_fvg}",
              why="Bukti displacement: tembus swing pendek ATAU meninggalkan Fair Value Gap."),
-        dict(grup="Filter", k="Bias H4 bullish", ok=bool(c_bias),
-             detail=f"close_H4 vs MA240 = {'DI ATAS' if c_bias else 'DI BAWAH'}",
-             why="Long-only searah tren menengah. Short terbukti rugi (PF 0,748)."),
+        dict(grup="Filter", k="Kualitas tren H4", ok=bool(c_bias),
+             detail=(f"MA240={_ma:.2f} | jarak={_dist:+.2f}% "
+                     f"(min +{CFG.BIAS_MIN_DIST_PCT}%) | slope {CFG.BIAS_SLOPE_BARS} bar H4"
+                     if pd.notna(_ma) else "MA240 belum siap (warmup)"),
+             why=("Long-only searah tren menengah. Tidak cukup 'di atas MA': MA harus "
+                  "MENANJAK dan harga >= 0,50% di atasnya. Rezim mendempet MA = kantong "
+                  "rugi terbesar (PF 0,763), MA berbalik turun PF 0,910.")),
         dict(grup="Guard", k=f"Spread <= ${CFG.MAX_SPREAD_USD}", ok=bool(c_spread),
              detail=f"spread=${spr:.3f}", why="Spread lebar memakan edge yang cuma +0,47pp."),
         dict(grup="Guard", k=f"Slot < {CFG.MAX_CONCURRENT}", ok=bool(c_slots),
