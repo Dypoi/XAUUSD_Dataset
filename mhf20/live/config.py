@@ -17,13 +17,14 @@ class LiveConfig:
     TP1_CLOSE_PCT: float = 0.50
     TIME_STOP_BARS: int = 288
     # === MODE ===
-    # "santai"  = maks 1 entry/hari, filter ketat, risiko $100/trade, 2 slot
-    # "standar" = v1.1 penuh, ~2 entry/hari, risiko $20/trade, 8 slot
-    MODE: str = "santai"
+    # "aktif"   = maks 5 entry/hari, risiko $40/trade, 8 slot  <-- SEKARANG
+    # "santai"  = maks 1 entry/hari, risiko $100/trade, 2 slot
+    # "standar" = tanpa batas harian, ~2 entry/hari, risiko $20/trade, 8 slot
+    MODE: str = "aktif"
 
-    RISK_PER_POSITION: float = 100.0   # santai; standar = 20.0
-    MAX_CONCURRENT: int = 2            # santai; standar = 8
-    MAX_ENTRIES_PER_DAY: int = 1       # santai; 0 = tanpa batas (standar)
+    RISK_PER_POSITION: float = 40.0    # aktif; santai = 100.0; standar = 20.0
+    MAX_CONCURRENT: int = 8            # aktif; santai = 2
+    MAX_ENTRIES_PER_DAY: int = 5       # aktif; santai = 1; 0 = tanpa batas
     CONTRACT_SIZE: float = 100.0
     SLIPPAGE_USD: float = 0.02
 
@@ -62,7 +63,7 @@ class LiveConfig:
     # --- EKSEKUSI OTOMATIS ---
     AUTO_EXECUTE: bool = True        # kirim order sungguhan ke MT5
     DEMO_ONLY: bool = True           # tolak eksekusi bila akun REAL terdeteksi
-    MAX_ORDERS_PER_DAY: int = 2      # rem keras; mode santai butuh 1
+    MAX_ORDERS_PER_DAY: int = 6      # rem keras; mode aktif butuh 5
     MAX_SEND_ATTEMPTS: int = 3
     MAX_SLIPPAGE_USD: float = 0.30   # dikonversi ke point sesuai digits simbol
     MIN_FREE_MARGIN: float = 200.0   # USD, berhenti bila margin bebas menipis

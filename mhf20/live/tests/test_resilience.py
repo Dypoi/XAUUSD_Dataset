@@ -222,8 +222,9 @@ chk("MAX_ORDERS_PER_DAY tidak melampaui cap",
     (_grab(_cf2,"MAX_ORDERS_PER_DAY",int) or 99) >= (_grab(_cf2,"MAX_ENTRIES_PER_DAY",int) or 1))
 # engine backtest wajib punya cap yang sama
 _en=open(os.path.join(os.path.dirname(_L),'engine.py')).read()
-chk("engine backtest menegakkan cap", "MAX_ENTRIES_PER_DAY" in _en and "day_entries" in _en)
-chk("day_entries direset tiap hari", _en.count("day_entries = 0") >= 2)
+chk("engine backtest menegakkan cap", "MAX_ENTRIES_PER_DAY" in _en and "entries_on" in _en)
+chk("cap dikunci ke hari EKSEKUSI (day[j]), bukan hari sinyal",
+    "entries_on.get(day[j]" in _en)
 
 print(f"\n{'='*54}\nLULUS {P} · GAGAL {F}")
 sys.exit(1 if F else 0)

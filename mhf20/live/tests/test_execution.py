@@ -74,7 +74,7 @@ chk("order tereksekusi", r.get('ok'), f"(ticket {r.get('ticket')})")
 chk("broker menerima 1 order", sim.sent_count == 1, f"({sim.sent_count})")
 chk("intent FILLED", s.intent_for_bar('SIM', 1000)['state'] == 'FILLED')
 
-print("\n[2] SINYAL SAMA DUA KALI -> order kedua HARUS ditolak")
+print("\n[2] SINYAL SAMA DUA KALI -> order kedua HARUS ditolak (dedup, bukan cap harian)")
 r2 = ex.execute(Ev(1000), 1, 0, 10000, 10000)
 chk("order kedua ditolak", not r2.get('ok'), f"({r2.get('reason')})")
 chk("broker tetap 1 order", sim.sent_count == 1, f"({sim.sent_count})")
@@ -175,7 +175,7 @@ print("\n[13] Batas order per hari")
 ex2.orders_today = CFG.MAX_ENTRIES_PER_DAY
 ex2.frozen = False
 ok13, why13 = ex2.can_execute(Ev(9450), 0, 0, 10000, 10000)
-chk("mode santai: entry ke-2 hari sama ditolak", (not ok13) and "santai" in why13.lower())
+chk(f"cap {CFG.MAX_ENTRIES_PER_DAY} entry/hari ditolak saat penuh", (not ok13) and "entry/hari" in why13.lower())
 ex2.orders_today = CFG.MAX_ORDERS_PER_DAY
 ok, why = ex2.can_execute(Ev(9500), 0, 0, 10000, 10000)
 chk("batas harian memblokir", not ok, f"({why})")

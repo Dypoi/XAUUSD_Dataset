@@ -166,7 +166,7 @@ class Executor:
         if not acc.get("trade_allowed", True):
             return False, "Trading tidak diizinkan terminal (AutoTrading mati?)"
         if getattr(c, "MAX_ENTRIES_PER_DAY", 0) > 0 and self.orders_today >= c.MAX_ENTRIES_PER_DAY:
-            return False, (f"Mode santai: batas {c.MAX_ENTRIES_PER_DAY} entry/hari sudah "
+            return False, (f"Batas {c.MAX_ENTRIES_PER_DAY} entry/hari sudah "
                            f"terpakai ({self.orders_today}). Menunggu besok.")
         if self.orders_today >= c.MAX_ORDERS_PER_DAY:
             return False, f"Batas {c.MAX_ORDERS_PER_DAY} order/hari tercapai"

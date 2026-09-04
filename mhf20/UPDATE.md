@@ -70,3 +70,35 @@ Balik ke standar: set `MAX_ENTRIES_PER_DAY=0`, `RISK_PER_POSITION=20`, `MAX_CONC
 `BIAS_MIN_DIST_PCT=0.50`, `MAX_ORDERS_PER_DAY=12` di **kedua** file.
 
 Detail: `docs/MODE_SANTAI.md`
+
+---
+
+## MODE AKTIF — maks 5 entry/hari (permintaan pengguna, menggantikan mode santai)
+
+| | Standar | Santai (1/hr) | **Aktif (5/hr)** |
+|---|---|---|---|
+| Entry/hari nyata | 2,03 | 0,31 | **1,15** |
+| Trades | 4.905 | 740 | **2.779** |
+| Risiko/trade | $20 | $100 | **$40** |
+| Slot | 8 | 2 | **8** |
+| WR | 55,33% | 55,27% | **55,70%** |
+| PF | 1,304 | 1,362 | **1,353** |
+| CAGR | 9,50% | 7,20% | **9,10%** |
+| MaxDD | −11,68% | −10,43% | **−11,83%** |
+| t-stat | +8,43 | +3,77 | **+7,16** |
+
+IS 1,382 / OOS 1,330 · tahan +$0,50/sisi (PF 1,171). **Jan–Ags 2026 PF 0,961 (−$131).**
+
+Mode aktif ≈ CAGR mode standar dengan 43% lebih sedikit trade dan PF lebih tinggi.
+
+**BUG DIPERBAIKI:** cap harian dihitung pada hari *sinyal* (`day[i]`) padahal entry
+dieksekusi bar berikutnya (`day[j]`) → ada hari dengan 6 entry meski cap 5. Sekarang
+dikunci ke hari eksekusi. Verifikasi: maks 5/hari, nol pelanggaran.
+
+**75% hari tetap tanpa sinyal.** 411 hari langsung mentok cap 5; sisanya sepi.
+
+Pembulatan lot: risk $30 = risk $20 (sama-sama 0,02 lot). $40 → 0,03 lot = $36,84 nyata.
+
+Audit: **paritas 191/191 · resilience 78/78 · eksekusi 38/38**.
+
+Detail + cara ganti mode: `docs/MODE_AKTIF.md`

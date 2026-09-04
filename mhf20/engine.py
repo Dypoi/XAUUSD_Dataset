@@ -22,12 +22,13 @@ def run_backtest(df: pd.DataFrame, cfg: Config = CFG, equity0: float = 10_000.0,
     open_pos = []          # list of dict
     closed = []
     pid = 0
-    cur_day = None; day_pnl = 0.0; day_entries = 0
+    cur_day = None; day_pnl = 0.0
+    entries_on = {}          # hari eksekusi -> jumlah entry (kunci: day[j], bukan day[i])
     halted = False
 
     for i in range(len(df) - 1):
         if day[i] != cur_day:
-            cur_day = day[i]; day_pnl = 0.0; day_entries = 0
+            cur_day = day[i]; day_pnl = 0.0
 
         # ---------- kelola posisi terbuka ----------
         still = []
@@ -70,11 +71,12 @@ def run_backtest(df: pd.DataFrame, cfg: Config = CFG, equity0: float = 10_000.0,
             continue
         if len(open_pos) >= cfg.MAX_CONCURRENT:
             continue
-        if cfg.MAX_ENTRIES_PER_DAY > 0 and day_entries >= cfg.MAX_ENTRIES_PER_DAY:
-            continue
         if day_pnl <= -cfg.DAILY_LOSS_LIMIT or day_pnl >= cfg.DAILY_PROFIT_LIMIT:
             continue
         j = i + 1
+        if (cfg.MAX_ENTRIES_PER_DAY > 0
+                and entries_on.get(day[j], 0) >= cfg.MAX_ENTRIES_PER_DAY):
+            continue
         spread = o_ask[j] - o_bid[j]
         if spread > cfg.MAX_SPREAD_USD:
             continue
@@ -83,7 +85,7 @@ def run_backtest(df: pd.DataFrame, cfg: Config = CFG, equity0: float = 10_000.0,
                             cfg.MIN_LOT, cfg.MAX_LOT))
         ep = o_ask[j] + cfg.SLIPPAGE_USD
         pid += 1
-        day_entries += 1
+        entries_on[day[j]] = entries_on.get(day[j], 0) + 1
         open_pos.append(dict(id=pid, i=j, ep=ep, lot=lot,
                              sl=ep - cfg.SL_USD, t1=ep + cfg.TP1_R * cfg.SL_USD,
                              t2=ep + cfg.TP2_R * cfg.SL_USD, rem=1.0, tp1=False,
