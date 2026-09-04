@@ -1,0 +1,285 @@
+<!DOCTYPE html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MHF-20 · Jurnal Trading</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b0e14;--pn:#131722;--pn2:#1a1f2e;--bd:#252b3b;--tx:#d6dae5;--dim:#8b93a7;
+--up:#26a69a;--dn:#ef5350;--warn:#f0a500;--acc:#4d8bff}
+body{background:var(--bg);color:var(--tx);font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif}
+.top{display:flex;align-items:center;gap:16px;padding:8px 14px;background:var(--pn);border-bottom:1px solid var(--bd);flex-wrap:wrap;position:sticky;top:0;z-index:20}
+.brand{font-weight:700;letter-spacing:.5px;font-size:15px}
+.badge{padding:2px 9px;border-radius:11px;font-size:11px;font-weight:600}
+.ok{background:rgba(38,166,154,.18);color:var(--up)}.bad{background:rgba(239,83,80,.18);color:var(--dn)}
+.wr{background:rgba(240,165,0,.18);color:var(--warn)}
+.kv{display:flex;gap:5px;align-items:baseline}.kv .l{color:var(--dim);font-size:11px}
+.kv .v{font-weight:600;font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:1fr 400px;gap:10px;padding:10px}
+@media(max-width:1100px){.grid{grid-template-columns:1fr}}
+.card{background:var(--pn);border:1px solid var(--bd);border-radius:8px;overflow:hidden}
+.card h3{font-size:12px;padding:8px 12px;background:var(--pn2);border-bottom:1px solid var(--bd);
+color:var(--dim);text-transform:uppercase;letter-spacing:.7px;display:flex;justify-content:space-between}
+.card .b{padding:10px 12px}
+#chart{width:100%;height:420px;display:block}
+.tabs{display:flex;gap:2px;padding:6px 8px;background:var(--pn2);border-bottom:1px solid var(--bd)}
+.tab{padding:4px 11px;border-radius:5px;cursor:pointer;color:var(--dim);font-size:12px}
+.tab.on{background:var(--acc);color:#fff}
+.rz{max-height:300px;overflow-y:auto}
+.rw{display:flex;gap:8px;padding:6px 10px;border-bottom:1px solid var(--bd);align-items:flex-start}
+.rw:hover{background:var(--pn2)}
+.dot{width:7px;height:7px;border-radius:50%;margin-top:6px;flex:0 0 7px}
+.dot.y{background:var(--up)}.dot.n{background:var(--dn)}
+.rw .k{font-weight:600;font-size:12px}.rw .d{color:var(--dim);font-size:11px;font-variant-numeric:tabular-nums}
+.rw .w{color:#6b7488;font-size:10.5px;font-style:italic;margin-top:2px}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th{text-align:left;color:var(--dim);font-weight:600;padding:5px 8px;border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--pn2)}
+td{padding:5px 8px;border-bottom:1px solid var(--bd);font-variant-numeric:tabular-nums}
+.g{color:var(--up)}.r{color:var(--dn)}.dim{color:var(--dim)}
+.big{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.st{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px}
+.st div{background:var(--pn2);padding:7px 9px;border-radius:6px}
+.st .l{color:var(--dim);font-size:10px;text-transform:uppercase}
+.st .v{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.banner{padding:8px 14px;font-weight:600;text-align:center;display:none}
+.banner.show{display:block}
+.pill{font-size:10px;padding:1px 6px;border-radius:8px;background:var(--pn2);color:var(--dim)}
+.legend{display:flex;gap:12px;font-size:10.5px;color:var(--dim);padding:4px 12px;flex-wrap:wrap}
+.lg{display:flex;gap:4px;align-items:center}.sw{width:14px;height:2px;display:inline-block}
+</style></head><body>
+
+<div class="top">
+  <span class="brand">MHF-20</span>
+  <span id="sym" class="pill">—</span>
+  <span id="stat" class="badge wr">MENYAMBUNG</span>
+  <span id="mt5" class="badge wr">MT5 —</span>
+  <div class="kv"><span class="l">HARI</span><span class="v" id="day">1/5</span></div>
+  <div class="kv"><span class="l">BID</span><span class="v" id="bid">—</span></div>
+  <div class="kv"><span class="l">ASK</span><span class="v" id="ask">—</span></div>
+  <div class="kv"><span class="l">SPREAD</span><span class="v" id="spr">—</span></div>
+  <div class="kv"><span class="l">EQUITY</span><span class="v" id="eq">—</span></div>
+  <div class="kv"><span class="l">PnL HARI INI</span><span class="v" id="dpnl">—</span></div>
+  <div class="kv"><span class="l">POSISI</span><span class="v" id="npos">0/8</span></div>
+  <span style="margin-left:auto" class="pill" id="clock">—</span>
+</div>
+<div id="banner" class="banner"></div>
+
+<div class="grid">
+ <div>
+  <div class="card">
+    <h3>Candle M5 · live <span id="lastbar" class="dim"></span></h3>
+    <canvas id="chart"></canvas>
+    <div class="legend">
+      <span class="lg"><i class="sw" style="background:#f0a500"></i>BSL (likuiditas beli)</span>
+      <span class="lg"><i class="sw" style="background:#4d8bff"></i>SSL</span>
+      <span class="lg"><i class="sw" style="background:#26a69a"></i>MA240 H4 (bias)</span>
+      <span class="lg">▲ sinyal valid</span><span class="lg">· sinyal ditolak</span>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:10px">
+    <h3>Kenapa entry / kenapa tidak — evaluasi bar terakhir
+        <span id="evts" class="dim"></span></h3>
+    <div class="b" id="verdict" style="padding-bottom:4px"></div>
+    <div class="rz" id="reasons"></div>
+  </div>
+ </div>
+
+ <div>
+  <div class="card">
+    <h3>Ringkasan jurnal</h3>
+    <div class="b"><div class="st" id="summary"></div></div>
+  </div>
+
+  <div class="card" style="margin-top:10px">
+    <div class="tabs">
+      <div class="tab on" data-t="pos">Posisi</div>
+      <div class="tab" data-t="sig">Sinyal</div>
+      <div class="tab" data-t="tr">Trade</div>
+      <div class="tab" data-t="ev">Log</div>
+    </div>
+    <div class="rz" id="tabbody" style="max-height:460px"></div>
+  </div>
+ </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fx=(v,d=2)=>v==null||isNaN(v)?'—':Number(v).toFixed(d);
+const money=v=>v==null?'—':(v<0?'-':'')+'$'+Math.abs(v).toFixed(2);
+let S={}, BARS=[], SIGS=[], CUR=null, TAB='pos', SNAP={};
+
+/* ---------- WebSocket dengan auto-reconnect ---------- */
+let ws, wsTry=0;
+function connect(){
+  ws=new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen=()=>{wsTry=0;banner('',false)};
+  ws.onmessage=e=>{S=JSON.parse(e.data);render();};
+  ws.onclose=()=>{wsTry++;banner(`Koneksi dashboard terputus — menyambung ulang (${wsTry})...`,true,'var(--warn)');
+    setTimeout(connect,Math.min(5000,500*wsTry));};
+  ws.onerror=()=>ws.close();
+}
+function banner(t,show,c){const b=$('banner');b.textContent=t;b.style.background=c||'var(--warn)';
+  b.style.color='#111';b.classList.toggle('show',show);}
+
+/* ---------- polling data historis ---------- */
+async function poll(){
+  try{
+    const [b,s]=await Promise.all([fetch('/api/bars?limit=300').then(r=>r.json()),
+                                   fetch('/api/signals?limit=300').then(r=>r.json())]);
+    BARS=b.bars||[];CUR=b.current;SIGS=s.signals||[];draw();
+  }catch(e){}
+  try{SNAP=await fetch('/api/report').then(r=>r.json());summary();}catch(e){}
+  loadTab();
+}
+setInterval(poll,3000);
+
+/* ---------- render header ---------- */
+function render(){
+  $('sym').textContent=S.symbol||'—';
+  const st=S.status||'—';
+  const sb=$('stat');sb.textContent=st;
+  sb.className='badge '+(st==='RUNNING'?'ok':st==='DEGRADED'?'wr':'bad');
+  const mb=$('mt5');mb.textContent='MT5 '+(S.mt5||'—');
+  mb.className='badge '+(S.mt5==='CONNECTED'?'ok':'bad');
+  if(S.mt5!=='CONNECTED') banner('MT5 terputus — data tidak diperbarui. Sistem otomatis menyambung ulang; jurnal tetap aman tersimpan.',true,'var(--dn)');
+  else if(st==='DEGRADED') banner('Tidak ada tick baru >20 detik (pasar tutup atau koneksi lambat).',true,'var(--warn)');
+  else banner('',false);
+
+  $('day').textContent=`${S.journal_day||1}/5`;
+  if(S.tick){$('bid').textContent=fx(S.tick.bid);$('ask').textContent=fx(S.tick.ask);
+    const sp=S.tick.spread;const e=$('spr');e.textContent='$'+fx(sp,3);
+    e.className='v '+(sp>1.2?'r':'g');}
+  $('eq').textContent=money(S.equity);
+  const d=$('dpnl');d.textContent=money(S.day_pnl);d.className='v '+(S.day_pnl>=0?'g':'r');
+  const np=(S.open_positions||[]).length;$('npos').textContent=`${np}/8`;
+  $('clock').textContent=new Date().toLocaleTimeString('id-ID')+' · uptime '+Math.floor((S.uptime_s||0)/60)+'m';
+  verdict();
+}
+
+/* ---------- alasan entry ---------- */
+function verdict(){
+  const ev=S.last_eval;
+  if(!ev){$('verdict').innerHTML='<span class="dim">Menunggu bar M5 tertutup...</span>';return;}
+  $('evts').textContent=ev.ts?new Date(ev.ts).toLocaleTimeString('id-ID'):'';
+  const ok=ev.passed;
+  $('verdict').innerHTML=
+    `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span class="badge ${ok?'ok':'bad'}" style="font-size:12px">${ok?'✔ ENTRY VALID':'✖ TIDAK ENTRY'}</span>
+      <span class="dim">harga ${fx(ev.price)} · spread $${fx(ev.spread,3)}</span>
+      ${ok?`<span class="pill">lot ${ev.lot} · SL ${fx(ev.sl)} · TP1 ${fx(ev.tp1)} · TP2 ${fx(ev.tp2)}</span>`:''}
+      ${!ok&&ev.blocked_by?`<span class="r" style="font-size:11.5px">Terhalang: ${ev.blocked_by}</span>`:''}
+     </div>`;
+  $('reasons').innerHTML=(ev.reasons||[]).map(r=>
+    `<div class="rw"><span class="dot ${r.ok?'y':'n'}"></span><div style="flex:1">
+      <div class="k">${r.k} <span class="pill">${r.grup}</span></div>
+      <div class="d">${r.detail||''}</div><div class="w">${r.why||''}</div></div></div>`).join('');
+}
+
+/* ---------- ringkasan ---------- */
+function summary(){
+  const r=SNAP||{};
+  const it=[['Trade',r.trades??0],['Win rate',fx(r.win_rate,1)+'%'],
+    ['Profit Factor',r.profit_factor==null?'—':fx(r.profit_factor,3)],
+    ['Net',money(r.net)],['Ekspektasi',money(r.expectancy)],
+    ['Dalam R',fx(r.expectancy_R,3)+'R'],
+    ['Sinyal valid',r.signals_passed??0],['Ditolak',r.signals_blocked??0]];
+  $('summary').innerHTML=it.map(([l,v])=>{
+    const neg=String(v).startsWith('-');
+    return `<div><div class="l">${l}</div><div class="v ${neg?'r':''}">${v}</div></div>`}).join('');
+}
+
+/* ---------- tabel ---------- */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');TAB=t.dataset.t;loadTab();});
+
+async function loadTab(){
+  const b=$('tabbody');
+  if(TAB==='pos'){
+    const p=S.open_positions||[];
+    b.innerHTML=p.length?`<table><tr><th>Ticket</th><th>Arah</th><th>Lot</th><th>Entry</th><th>SL</th><th>Profit</th></tr>`+
+      p.map(x=>`<tr><td>${x.ticket}</td><td>${x.type===0?'BUY':'SELL'}</td><td>${x.volume}</td>
+      <td>${fx(x.price_open)}</td><td>${fx(x.sl)}</td>
+      <td class="${x.profit>=0?'g':'r'}">${money(x.profit)}</td></tr>`).join('')+'</table>'
+      :'<div class="b dim">Belum ada posisi terbuka.</div>';
+  }
+  if(TAB==='sig'){
+    const s=SIGS.slice(0,80);
+    b.innerHTML=s.length?`<table><tr><th>Waktu</th><th>Harga</th><th>Status</th><th>Keterangan</th></tr>`+
+      s.map(x=>`<tr><td>${new Date(x.ts).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
+      <td>${fx(x.price)}</td><td class="${x.passed?'g':'dim'}">${x.passed?'VALID':'tolak'}</td>
+      <td class="dim">${x.passed?`lot ${x.lot} SL ${fx(x.sl)}`:(x.blocked_by||'').slice(0,60)}</td></tr>`).join('')+'</table>'
+      :'<div class="b dim">Belum ada sinyal tercatat.</div>';
+  }
+  if(TAB==='tr'){
+    const d=await fetch('/api/trades?limit=100').then(r=>r.json()).catch(()=>({trades:[]}));
+    const t=d.trades||[];
+    b.innerHTML=t.length?`<table><tr><th>Ticket</th><th>Masuk</th><th>Lot</th><th>PnL</th><th>Status</th></tr>`+
+      t.map(x=>`<tr><td>${x.ticket??'—'}</td>
+      <td>${x.entry_ts?new Date(x.entry_ts).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—'}</td>
+      <td>${x.lot??'—'}</td><td class="${(x.pnl||0)>=0?'g':'r'}">${x.pnl==null?'—':money(x.pnl)}</td>
+      <td class="dim">${x.status}</td></tr>`).join('')+'</table>'
+      :'<div class="b dim">Belum ada trade.</div>';
+  }
+  if(TAB==='ev'){
+    const d=await fetch('/api/events?limit=120').then(r=>r.json()).catch(()=>({events:[]}));
+    b.innerHTML=(d.events||[]).map(e=>`<div class="rw"><span class="dot ${e.level==='ERROR'?'n':'y'}"></span>
+      <div style="flex:1"><div class="d">${new Date(e.ts).toLocaleTimeString('id-ID')} · <b>${e.kind}</b></div>
+      <div style="font-size:11.5px">${e.msg}</div></div></div>`).join('')||'<div class="b dim">Kosong.</div>';
+  }
+}
+
+/* ---------- chart canvas murni ---------- */
+const cv=$('chart'),cx=cv.getContext('2d');
+function draw(){
+  const dpr=window.devicePixelRatio||1;
+  const W=cv.clientWidth,H=420;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+'px';
+  cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,W,H);
+  let bs=BARS.slice(-160);
+  if(CUR&&(!bs.length||CUR.ts>bs[bs.length-1].ts))bs=[...bs,CUR];
+  else if(CUR&&bs.length&&CUR.ts===bs[bs.length-1].ts)bs[bs.length-1]=CUR;
+  if(bs.length<2){cx.fillStyle='#8b93a7';cx.fillText('Menunggu data bar...',20,40);return;}
+  $('lastbar').textContent=new Date(bs[bs.length-1].ts).toLocaleString('id-ID');
+
+  const PL=8,PR=62,PT=10,PB=22;
+  const cw=W-PL-PR,ch=H-PT-PB;
+  let lo=Math.min(...bs.map(b=>b.low)),hi=Math.max(...bs.map(b=>b.high));
+  const ev=S.last_eval,ctx0=ev&&ev.ctx?ev.ctx:{};
+  [ctx0.BSL,ctx0.SSL,ctx0.ma_h4].forEach(v=>{if(v){lo=Math.min(lo,v);hi=Math.max(hi,v)}});
+  const pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
+  const X=i=>PL+cw*i/(bs.length-1||1), Y=p=>PT+ch*(hi-p)/(hi-lo);
+
+  cx.strokeStyle='#1e2433';cx.lineWidth=1;cx.fillStyle='#8b93a7';cx.font='10px monospace';
+  for(let i=0;i<=5;i++){const p=lo+(hi-lo)*i/5,y=Y(p);
+    cx.beginPath();cx.moveTo(PL,y);cx.lineTo(PL+cw,y);cx.stroke();
+    cx.fillText(p.toFixed(2),PL+cw+5,y+3);}
+
+  const bw=Math.max(1.5,cw/bs.length*0.62);
+  bs.forEach((b,i)=>{const x=X(i),up=b.close>=b.open;
+    cx.strokeStyle=up?'#26a69a':'#ef5350';cx.fillStyle=up?'#26a69a':'#ef5350';
+    cx.beginPath();cx.moveTo(x,Y(b.high));cx.lineTo(x,Y(b.low));cx.stroke();
+    const y1=Y(Math.max(b.open,b.close)),y2=Y(Math.min(b.open,b.close));
+    cx.fillRect(x-bw/2,y1,bw,Math.max(1,y2-y1));});
+
+  const line=(v,c,lbl)=>{if(v==null||isNaN(v))return;const y=Y(v);
+    cx.strokeStyle=c;cx.setLineDash([5,4]);cx.lineWidth=1.2;
+    cx.beginPath();cx.moveTo(PL,y);cx.lineTo(PL+cw,y);cx.stroke();cx.setLineDash([]);
+    cx.fillStyle=c;cx.font='9px monospace';cx.fillText(lbl,PL+3,y-3);};
+  line(ctx0.BSL,'#f0a500','BSL');line(ctx0.SSL,'#4d8bff','SSL');line(ctx0.ma_h4,'#26a69a','MA240 H4');
+
+  const bts=bs.map(b=>b.ts);
+  SIGS.forEach(s=>{const i=bts.indexOf(s.ts);if(i<0)return;
+    const x=X(i),y=Y(bs[i].low)+12;
+    if(s.passed){cx.fillStyle='#26a69a';cx.beginPath();
+      cx.moveTo(x,y-9);cx.lineTo(x-5,y);cx.lineTo(x+5,y);cx.closePath();cx.fill();}
+    else{cx.fillStyle='rgba(139,147,167,.55)';cx.beginPath();cx.arc(x,y,2,0,7);cx.fill();}});
+
+  const last=bs[bs.length-1],ly=Y(last.close);
+  cx.fillStyle='#4d8bff';cx.fillRect(PL+cw,ly-8,PR-4,16);
+  cx.fillStyle='#fff';cx.font='bold 10px monospace';cx.fillText(last.close.toFixed(2),PL+cw+4,ly+3);
+  if(S.tick){const ty=Y(S.tick.ask);cx.strokeStyle='rgba(77,139,255,.5)';cx.setLineDash([2,3]);
+    cx.beginPath();cx.moveTo(PL,ty);cx.lineTo(PL+cw,ty);cx.stroke();cx.setLineDash([]);}
+}
+window.addEventListener('resize',draw);
+connect();poll();setInterval(draw,1000);
+</script></body></html>

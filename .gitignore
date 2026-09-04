@@ -1,3 +1,11 @@
 research/m1.parquet
 research/__pycache__/
 *.pyc
+__pycache__/
+
+mhf20/live/data/
+mhf20/live/cache/
+mhf20/live/__pycache__/
+*.db
+*.db-wal
+*.db-shm
