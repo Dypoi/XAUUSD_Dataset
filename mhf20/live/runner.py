@@ -120,10 +120,11 @@ class Runner:
                     self.state["tick"] = t
                     self.state["last_tick"] = now_ms()
                     self.state["mt5"] = "CONNECTED"
+                    self._apply_tick_to_current_bar(t)
                 else:
                     self.state["mt5"] = "RECONNECTING"
 
-                if time.time() - last_bars > 2:
+                if time.time() - last_bars > 0.6:
                     last_bars = time.time()
                     self._poll_bars()
 
@@ -181,6 +182,30 @@ class Runner:
         if closed_ts and closed_ts != self._last_closed_bar:
             self._last_closed_bar = closed_ts
             self._on_bar_close()
+
+    def _apply_tick_to_current_bar(self, t):
+        """Gerakkan bar berjalan mengikuti tick (tanpa menunggu polling bar).
+
+        Dipakai HANYA untuk tampilan. Sinyal tetap dihitung dari bar tertutup.
+        Harga disamakan ke MID agar konsisten dengan backtest.
+        """
+        cur = self.state.get("current_bar")
+        if not cur:
+            return
+        mid = (t["bid"] + t["ask"]) / 2.0
+        bar_ms = CFG.TIMEFRAME_MIN * 60 * 1000
+        slot = (t["ts"] // bar_ms) * bar_ms
+        if slot > cur["ts"]:
+            # bar baru terbentuk sebelum polling sempat jalan
+            cur = dict(ts=slot, open=mid, high=mid, low=mid, close=mid,
+                       spread=t["spread"], volume=0.0)
+        else:
+            cur = dict(cur)
+            cur["close"] = mid
+            cur["high"] = max(cur["high"], mid)
+            cur["low"] = min(cur["low"], mid)
+            cur["spread"] = t["spread"]
+        self.state["current_bar"] = cur
 
     def _on_bar_close(self):
         rows = self.s.bars(self.b.symbol, CFG.WARMUP_BARS)

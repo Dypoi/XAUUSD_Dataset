@@ -118,12 +118,19 @@ class MT5Bridge:
             tf = {1: mt5.TIMEFRAME_M1, 5: mt5.TIMEFRAME_M5, 15: mt5.TIMEFRAME_M15}[tf_min]
             r = mt5.copy_rates_from_pos(self.symbol, tf, 0, count)
             if r is None or len(r) == 0: return None
+            # MT5 memberi candle harga BID. Backtest MHF-20 memakai MID
+            # ((bid+ask)/2). Tanpa konversi ini, sinyal live bergeser sekitar
+            # setengah spread terhadap backtest -> bukan sekadar beda tampilan.
+            si = mt5.symbol_info(self.symbol)
+            point = float(si.point) if si else 0.01
             out = []
             for x in r:
-                out.append(dict(ts=int(x['time']) * 1000, open=float(x['open']),
-                                high=float(x['high']), low=float(x['low']),
-                                close=float(x['close']), spread=float(x['spread']) / 100.0,
-                                volume=float(x['tick_volume'])))
+                sp = float(x['spread']) * point      # spread bar dalam USD
+                h = sp / 2.0                          # bid -> mid
+                out.append(dict(ts=int(x['time']) * 1000,
+                                open=float(x['open']) + h, high=float(x['high']) + h,
+                                low=float(x['low']) + h, close=float(x['close']) + h,
+                                spread=sp, volume=float(x['tick_volume'])))
             return out
         except Exception as e:
             self.log("WARN", "MT5", f"bars error: {e}"); self.connected = False; return None

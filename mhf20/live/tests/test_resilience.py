@@ -100,5 +100,20 @@ chk("limit rugi harian memblokir",not ev.passed and 'rugi' in ev.blocked_by)
 ev=SE.evaluate_closed_bar(df,0,0,7000,10000)           # DD -30%
 chk("kill-switch DD memblokir",not ev.passed and 'DD' in ev.blocked_by)
 
+
+print("\n[16] Candle live memakai MID (bukan BID) — harus cocok dengan backtest")
+src=open(os.path.join(_L,'mt5_bridge.py')).read()
+chk("konversi bid->mid ada", "h = sp / 2.0" in src and "float(x['open']) + h" in src)
+chk("dipakai untuk OHLC", all(f"float(x['{k}']) + h" in src for k in ('open','high','low','close')))
+
+print("\n[17] Kesegaran tampilan candle")
+rs=open(os.path.join(_L,'runner.py')).read()
+chk("bar berjalan digerakkan tick", "_apply_tick_to_current_bar" in rs)
+chk("tampilan pakai MID dari tick", '(t["bid"] + t["ask"]) / 2.0' in rs)
+chk("polling bar <= 1 detik", "last_bars > 0.6" in rs)
+html=open(os.path.join(_L,'static','index.html')).read()
+chk("frontend poll <= 1 detik", "setInterval(poll,1000)" in html)
+chk("sinyal TETAP dari bar tertutup", "for x in bars[:-1]" in rs)
+
 print(f"\n{'='*54}\nLULUS {P} · GAGAL {F}")
 sys.exit(1 if F else 0)

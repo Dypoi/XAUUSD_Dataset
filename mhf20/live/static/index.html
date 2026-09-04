@@ -143,7 +143,7 @@ async function poll(){
   try{SNAP=await fetch('/api/report').then(r=>r.json());summary();}catch(e){}
   loadTab();
 }
-setInterval(poll,3000);
+setInterval(poll,1000);
 
 /* ---------- render header ---------- */
 function render(){
