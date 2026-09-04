@@ -165,6 +165,9 @@ class Executor:
             return False, "AKUN REAL terdeteksi — DEMO_ONLY aktif, eksekusi diblokir"
         if not acc.get("trade_allowed", True):
             return False, "Trading tidak diizinkan terminal (AutoTrading mati?)"
+        if getattr(c, "MAX_ENTRIES_PER_DAY", 0) > 0 and self.orders_today >= c.MAX_ENTRIES_PER_DAY:
+            return False, (f"Mode santai: batas {c.MAX_ENTRIES_PER_DAY} entry/hari sudah "
+                           f"terpakai ({self.orders_today}). Menunggu besok.")
         if self.orders_today >= c.MAX_ORDERS_PER_DAY:
             return False, f"Batas {c.MAX_ORDERS_PER_DAY} order/hari tercapai"
         if n_open >= c.MAX_CONCURRENT:

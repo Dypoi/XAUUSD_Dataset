@@ -3,11 +3,14 @@
 MHF-20  ·  Momentum Continuation, High-Frequency, Risk-$20
 XAUUSD Long-Only Trend-Aligned Breakout System
 ================================================================================
-Backtest 2016-09..2026-09 (9.8 thn, net bid/ask + slippage) -- v1.1:
-  4,905 trades | 2.03 entry/hari | WR 55.33% | PF 1.304
-  $10,000 -> $23,881 (+138.8%, CAGR 9.50%) | MaxDD -11.68% | t-stat +8.43
-  IS 1.276 / OOS 1.324 | tahan sampai +$0.50/sisi slippage (PF 1.006)
-  v1.1 = filter kualitas tren H4 (slope + jarak); lihat docs/FILTER_TREN.md
+MODE AKTIF: SANTAI (maks 1 entry/hari) -- lihat docs/MODE_SANTAI.md
+  740 trades | 0.31 entry/hari | WR 55.27% | PF 1.362
+  $10,000 -> $19,482 (+94.8%, CAGR 7.20%) | MaxDD -10.43% | t-stat +3.77
+  IS 1.215 / OOS 1.482 | tahan +$0.50/sisi slippage (PF 1.176)
+  CATATAN: 75% hari TANPA sinyal -> realistis ~1 trade per 3 hari kerja
+
+Mode standar (MAX_ENTRIES_PER_DAY=0, risk $20, 8 slot, dist 0.50):
+  4,905 trades | 2.03 entry/hari | WR 55.33% | PF 1.304 | CAGR 9.50% | DD -11.68%
   v1.0 (bias biner) = 6,274 trades | PF 1.213 | DD -14.47%
 
 PERINGATAN: sistem ini REAKTIF, bukan prediktif. Lihat docs/HONEST_LIMITS.md
@@ -29,7 +32,7 @@ class Config:
     SWING_LOOKBACK: int = 6         # bar untuk displacement (high[-6:-1])
     BIAS_MA_H4: int = 240           # MA H4 ~40 hari
     BIAS_SLOPE_BARS: int = 30       # MA240 harus menanjak atas 30 bar H4 (~5 hari); 0 = mati
-    BIAS_MIN_DIST_PCT: float = 0.50 # harga min 0.50% di atas MA240; 0 = mati
+    BIAS_MIN_DIST_PCT: float = 1.50 # harga min % di atas MA240; 0 = mati
     ASIA_END_HOUR: int = 7          # UTC, batas sesi Asia
     LONDON_END_HOUR: int = 12       # UTC, batas sesi London
 
@@ -41,8 +44,9 @@ class Config:
     TIME_STOP_BARS: int = 288       # 24 jam pada M5
 
     # --- Risiko ---
-    RISK_PER_POSITION: float = 20.0 # USD
-    MAX_CONCURRENT: int = 8         # -> risiko total maks $160 (1.6% dari $10k)
+    RISK_PER_POSITION: float = 100.0 # USD
+    MAX_ENTRIES_PER_DAY: int = 1    # mode santai; 0 = tanpa batas (standar)
+    MAX_CONCURRENT: int = 2         # -> risiko total maks $200 (2.0% dari $10k)
     CONTRACT_SIZE: float = 100.0    # 1 lot = 100 oz
     MIN_LOT: float = 0.01
     MAX_LOT: float = 50.0

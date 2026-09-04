@@ -80,6 +80,7 @@ chk("order kedua ditolak", not r2.get('ok'), f"({r2.get('reason')})")
 chk("broker tetap 1 order", sim.sent_count == 1, f"({sim.sent_count})")
 
 print("\n[3] KASUS TERBURUK: order MASUK tapi jawaban hilang, lalu proses MATI")
+ex.orders_today = 0   # skenario ini menguji orphan, bukan cap harian
 sim.fail_mode = 'timeout'
 r3 = ex.execute(Ev(2000), 1, 0, 10000, 10000)
 chk("dilaporkan gagal", not r3.get('ok'))
@@ -109,7 +110,8 @@ chk("broker tetap {} order".format(before), sim.sent_count == before)
 print("\n[6] Broker menolak (retcode fatal) -> tidak diulang, tidak beku")
 sim.fail_mode = 'reject'
 n0 = sim.sent_count
-r6 = ex2.execute(Ev(3000), 2, 0, 10000, 10000)
+ex2.orders_today = 0            # isolasi: uji kegagalan broker, bukan cap harian
+r6 = ex2.execute(Ev(3000), 0, 0, 10000, 10000)
 chk("dilaporkan gagal", not r6.get('ok'))
 chk("intent REJECTED", s2.intent_for_bar('SIM', 3000)['state'] == 'REJECTED')
 chk("hanya 1 percobaan", sim.sent_count == n0 + 1, f"({sim.sent_count-n0})")
@@ -118,7 +120,8 @@ chk("tidak membekukan sistem", not ex2.frozen)
 print("\n[7] Broker bilang DONE tapi posisi tak terlihat -> BEKU, tidak menebak")
 sim.fail_mode = 'silent'
 ex2.frozen = False
-r7 = ex2.execute(Ev(4000), 2, 0, 10000, 10000)
+ex2.orders_today = 0            # isolasi: uji jawaban hilang, bukan cap harian
+r7 = ex2.execute(Ev(4000), 0, 0, 10000, 10000)
 chk("dilaporkan gagal", not r7.get('ok'))
 chk("sistem dibekukan", ex2.frozen, f"({ex2.freeze_reason})")
 chk("intent ORPHAN", s2.intent_for_bar('SIM', 4000)['state'] == 'ORPHAN')
@@ -169,6 +172,10 @@ ok, why = ex5.can_execute(Ev(9400), 0, 0, 10000, 10000)
 chk("diblokir margin tipis", not ok and 'argin' in why, f"({why})")
 
 print("\n[13] Batas order per hari")
+ex2.orders_today = CFG.MAX_ENTRIES_PER_DAY
+ex2.frozen = False
+ok13, why13 = ex2.can_execute(Ev(9450), 0, 0, 10000, 10000)
+chk("mode santai: entry ke-2 hari sama ditolak", (not ok13) and "santai" in why13.lower())
 ex2.orders_today = CFG.MAX_ORDERS_PER_DAY
 ok, why = ex2.can_execute(Ev(9500), 0, 0, 10000, 10000)
 chk("batas harian memblokir", not ok, f"({why})")

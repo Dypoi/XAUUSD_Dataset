@@ -206,5 +206,24 @@ _turun=[120-i for i in range(20)]
 chk("MA berbalik turun -> DITOLAK", not bool(_bias(2,0.5,_turun).iloc[-1]))
 chk("filter mati (0,0) = perilaku v1.0", bool(_bias(0,0.0,_datar).iloc[-1]))
 
+print("\n[24] Mode santai: batas 1 entry/hari benar-benar ditegakkan")
+_cf2=open(os.path.join(_L,'config.py')).read()
+_ex2=open(os.path.join(_L,'executor.py')).read()
+_st2=open(_sp).read()
+chk("config live punya MAX_ENTRIES_PER_DAY", "MAX_ENTRIES_PER_DAY" in _cf2)
+chk("strategy punya MAX_ENTRIES_PER_DAY", "MAX_ENTRIES_PER_DAY" in _st2)
+for _n2 in ["MAX_ENTRIES_PER_DAY","MAX_CONCURRENT"]:
+    a=_grab(_st2,_n2,int); b=_grab(_cf2,_n2,int)
+    chk(f"{_n2} identik ({a} == {b})", a is not None and a==b)
+a=_grab(_st2,"RISK_PER_POSITION",float); b=_grab(_cf2,"RISK_PER_POSITION",float)
+chk(f"RISK_PER_POSITION identik ({a} == {b})", a is not None and a==b)
+chk("executor menolak entry ke-2 hari sama", "MAX_ENTRIES_PER_DAY" in _ex2 and "orders_today" in _ex2)
+chk("MAX_ORDERS_PER_DAY tidak melampaui cap",
+    (_grab(_cf2,"MAX_ORDERS_PER_DAY",int) or 99) >= (_grab(_cf2,"MAX_ENTRIES_PER_DAY",int) or 1))
+# engine backtest wajib punya cap yang sama
+_en=open(os.path.join(os.path.dirname(_L),'engine.py')).read()
+chk("engine backtest menegakkan cap", "MAX_ENTRIES_PER_DAY" in _en and "day_entries" in _en)
+chk("day_entries direset tiap hari", _en.count("day_entries = 0") >= 2)
+
 print(f"\n{'='*54}\nLULUS {P} · GAGAL {F}")
 sys.exit(1 if F else 0)

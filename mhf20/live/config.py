@@ -16,8 +16,14 @@ class LiveConfig:
     TP2_R: float = 2.0
     TP1_CLOSE_PCT: float = 0.50
     TIME_STOP_BARS: int = 288
-    RISK_PER_POSITION: float = 20.0
-    MAX_CONCURRENT: int = 8
+    # === MODE ===
+    # "santai"  = maks 1 entry/hari, filter ketat, risiko $100/trade, 2 slot
+    # "standar" = v1.1 penuh, ~2 entry/hari, risiko $20/trade, 8 slot
+    MODE: str = "santai"
+
+    RISK_PER_POSITION: float = 100.0   # santai; standar = 20.0
+    MAX_CONCURRENT: int = 2            # santai; standar = 8
+    MAX_ENTRIES_PER_DAY: int = 1       # santai; 0 = tanpa batas (standar)
     CONTRACT_SIZE: float = 100.0
     SLIPPAGE_USD: float = 0.02
 
@@ -26,7 +32,7 @@ class LiveConfig:
     SWING_LOOKBACK: int = 6
     BIAS_MA_H4: int = 240
     BIAS_SLOPE_BARS: int = 30       # MA240 H4 harus menanjak (~5 hari); WAJIB sama dgn strategy.py
-    BIAS_MIN_DIST_PCT: float = 0.50 # harga min 0.50% di atas MA240; WAJIB sama dgn strategy.py
+    BIAS_MIN_DIST_PCT: float = 1.50 # harga min % di atas MA240; WAJIB sama dgn strategy.py
     # Zona waktu server broker. Exness = GMT+0 (Help Center resmi), jadi 0.
     # None = deteksi otomatis (untuk broker GMT+2/+3 seperti IC Markets).
     # Isi angka di sini kalau Anda tahu pasti offset broker Anda.
@@ -56,7 +62,7 @@ class LiveConfig:
     # --- EKSEKUSI OTOMATIS ---
     AUTO_EXECUTE: bool = True        # kirim order sungguhan ke MT5
     DEMO_ONLY: bool = True           # tolak eksekusi bila akun REAL terdeteksi
-    MAX_ORDERS_PER_DAY: int = 12     # rem tambahan (backtest ~2,54/hari)
+    MAX_ORDERS_PER_DAY: int = 2      # rem keras; mode santai butuh 1
     MAX_SEND_ATTEMPTS: int = 3
     MAX_SLIPPAGE_USD: float = 0.30   # dikonversi ke point sesuai digits simbol
     MIN_FREE_MARGIN: float = 200.0   # USD, berhenti bila margin bebas menipis
