@@ -62,27 +62,66 @@ class MT5Bridge:
                 return False
 
     def _detect_server_offset(self):
-        """Cari selisih jam server broker vs UTC.
+        """Tentukan offset jam server broker vs UTC.
 
-        Bar MT5 ber-timestamp WAKTU SERVER (Exness umumnya GMT+2/+3, ikut DST),
-        sedangkan sinyal MHF-20 memakai jendela sesi berbasis UTC. Tanpa koreksi
-        ini ~19% sinyal berbeda dari backtest.
+        FAKTA BROKER: Exness memakai GMT+0 (dikonfirmasi Help Center resmi:
+        "MetaTrader trading platforms are set to Greenwich Mean Time (GMT+0)").
+        Jadi untuk Exness offset yang BENAR adalah 0 dan tidak boleh diubah.
+
+        Deteksi otomatis di sini hanya jaring pengaman untuk broker lain
+        (IC Markets/Pepperstone GMT+2/+3). Aturannya ketat karena salah deteksi
+        JAUH lebih berbahaya daripada tidak mendeteksi:
+
+          1. Pakai CFG.SERVER_GMT_OFFSET bila diisi manual (bukan None).
+          2. Tolak tick BASI. Saat pasar tutup (akhir pekan), tick terakhir bisa
+             berumur puluhan jam -> selisihnya terbaca sebagai "offset" palsu.
+             Ini akan MERUSAK broker GMT+0 yang sebenarnya sudah benar.
+          3. Bulatkan ke offset yang masuk akal saja (0, +1..+3, -5..-4).
+          4. Ragu -> 0.
         """
-        try:
-            t = mt5.symbol_info_tick(self.symbol)
-            if not t:
-                self.server_offset_h = 0; return
-            import time as _t
-            srv = int(t.time)                       # detik, waktu server
-            utc = int(_t.time())                    # detik, UTC nyata
-            off = round((srv - utc) / 3600.0)
-            self.server_offset_h = int(max(-12, min(14, off)))
+        from config import CFG as _C
+        manual = getattr(_C, "SERVER_GMT_OFFSET", None)
+        if manual is not None:
+            self.server_offset_h = int(manual)
             self.log("INFO", "MT5",
-                     f"Offset server broker: GMT{self.server_offset_h:+d} "
-                     f"(bar akan dikonversi ke UTC)")
+                     f"Offset server diset manual: GMT{self.server_offset_h:+d}")
+            return
+        try:
+            import time as _t
+            t = mt5.symbol_info_tick(self.symbol)
+            if not t or not getattr(t, "time", 0):
+                self.server_offset_h = 0
+                self.log("INFO", "MT5", "Tick tidak tersedia — offset server dianggap GMT+0.")
+                return
+            srv = int(t.time)
+            utc = int(_t.time())
+            diff = srv - utc
+            off_f = diff / 3600.0
+            near = round(off_f)
+            # (2) tick basi: sisa detik jauh dari batas jam yang rapi
+            if abs(off_f - near) > 0.2:
+                self.server_offset_h = 0
+                self.log("WARN", "MT5",
+                         f"Tick tampak basi (selisih {off_f:+.2f} jam, pasar tutup?) — "
+                         f"offset dipakai GMT+0.")
+                return
+            # (3) hanya offset broker yang lazim
+            if near not in (-5, -4, 0, 1, 2, 3):
+                self.server_offset_h = 0
+                self.log("WARN", "MT5",
+                         f"Offset terdeteksi GMT{near:+d} tidak lazim — dipakai GMT+0. "
+                         f"Isi SERVER_GMT_OFFSET di config.py bila broker Anda memang begitu.")
+                return
+            self.server_offset_h = int(near)
+            if near == 0:
+                self.log("INFO", "MT5", "Server broker GMT+0 (sesuai Exness) — tanpa koreksi.")
+            else:
+                self.log("WARN", "MT5",
+                         f"Server broker GMT{near:+d} — bar dikonversi ke UTC. "
+                         f"Untuk Exness seharusnya GMT+0; pastikan ini benar.")
         except Exception as e:
             self.server_offset_h = 0
-            self.log("WARN", "MT5", f"Gagal deteksi offset server: {e}")
+            self.log("WARN", "MT5", f"Gagal deteksi offset server: {e} — dipakai GMT+0.")
 
     def _resolve_symbol(self) -> bool:
         order = [self.symbol] + [c for c in CANDIDATES if c != self.symbol]

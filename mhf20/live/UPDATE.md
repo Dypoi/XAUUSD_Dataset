@@ -60,8 +60,8 @@ cd mhf20\live
 .venv\Scripts\python tests\test_resilience.py
 ```
 
-Harus berakhir dengan **`LULUS 45 · GAGAL 0`**.
-Kalau masih 37 atau kurang, berarti update belum masuk.
+Harus berakhir dengan **`LULUS 53 · GAGAL 0`**.
+Kalau masih 45 atau kurang, berarti update belum masuk.
 
 ### Cek C — spread cocok dengan broker
 
@@ -91,7 +91,7 @@ Sekarang alat ini juga menampilkan **offset server broker**, **contract size**, 
 | **Candle tersendat** | Rantai polling 2s + 3s + 1s = **6 detik** | Bar berjalan digerakkan tick tiap **0,25 detik** |
 | **Polling lambat** | runner 2s, browser 3s | runner 0,6s, browser 1s |
 | **Spread bar 10× lipat** | `spread/100` → `$2,600` pada XAUUSDm (digits=3) → **guard memblokir SEMUA entry** | `spread × point` → `$0,260`, plus jaring pengaman ask-bid |
-| **Zona waktu server** | Bar ber-timestamp waktu server (GMT+2/+3), sinyal pakai UTC → **~19% sinyal berbeda** | Offset dideteksi otomatis, bar dikonversi ke UTC |
+| **Zona waktu server** | Deteksi otomatis salah baca tick basi saat pasar tutup → offset palsu −12 jam, **merusak Exness yang sudah benar** | `SERVER_GMT_OFFSET = 0` eksplisit untuk Exness (GMT+0 resmi); deteksi otomatis hanya cadangan dengan aturan ketat |
 | **Deviation 10× ketat** | `30 point` = $0,03 pada digits=3, bukan $0,30 → sering requote | `MAX_SLIPPAGE_USD` dikonversi via `info.point` |
 | **Contract size** | Hardcoded 100 oz | Dibaca dari broker, lot dikoreksi otomatis |
 
@@ -101,7 +101,7 @@ bisa memicu atau membatalkan entry yang seharusnya tidak.
 
 Uji regresi [16] dan [17] ditambahkan supaya bug ini tidak terulang.
 
-**Status audit:** paritas 191/191 · ketahanan **45/45** · eksekusi 37/37.
+**Status audit:** paritas 191/191 · ketahanan **53/53** · eksekusi 37/37.
 Rincian audit putaran 2: lihat `AUDIT_PUTARAN_2.md`.
 
 ### Riwayat perbaikan

@@ -25,6 +25,11 @@ class LiveConfig:
     FVG_BUFFER: float = 0.30
     SWING_LOOKBACK: int = 6
     BIAS_MA_H4: int = 240
+    # Zona waktu server broker. Exness = GMT+0 (Help Center resmi), jadi 0.
+    # None = deteksi otomatis (untuk broker GMT+2/+3 seperti IC Markets).
+    # Isi angka di sini kalau Anda tahu pasti offset broker Anda.
+    SERVER_GMT_OFFSET: int | None = 0
+
     ASIA_END_HOUR: int = 7
     LONDON_END_HOUR: int = 12
     MAX_SPREAD_USD: float = 1.20

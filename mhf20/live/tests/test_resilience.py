@@ -131,11 +131,30 @@ chk("tidak ada MAX_SLIPPAGE_POINTS", "MAX_SLIPPAGE_POINTS" not in ex and "MAX_SL
 chk("dev dihitung dari point simbol", "MAX_SLIPPAGE_USD / info.point" in ex)
 chk("digits=3 -> 300 point = $0.30", abs(int(round(0.30/0.001))*0.001-0.30)<1e-9)
 
-print("\n[20] Zona waktu server broker dikonversi ke UTC")
+print("\n[20] Zona waktu server broker (Exness = GMT+0)")
 mb=open(os.path.join(_L,'mt5_bridge.py')).read()
+cfs=open(os.path.join(_L,'config.py')).read()
 chk("ada deteksi offset server", "_detect_server_offset" in mb)
 chk("offset diterapkan ke timestamp bar", "- off_ms" in mb)
 chk("dipanggil saat connect", "self._detect_server_offset()" in mb)
+chk("default SERVER_GMT_OFFSET = 0 (Exness)", "SERVER_GMT_OFFSET: int | None = 0" in cfs)
+chk("override manual dihormati", "SERVER_GMT_OFFSET" in mb and "manual is not None" in mb)
+chk("tick basi ditolak", "Tick tampak basi" in mb)
+chk("offset tidak lazim ditolak", "(-5, -4, 0, 1, 2, 3)" in mb)
+
+# simulasi: skenario berbahaya harus jatuh ke 0
+import time as _tt
+_u=int(_tt.time())
+def _det(srv, manual=None):
+    if manual is not None: return int(manual)
+    off=(srv-_u)/3600.0; near=round(off)
+    if abs(off-near)>0.2: return 0
+    if near not in (-5,-4,0,1,2,3): return 0
+    return int(near)
+chk("akhir pekan (tick 26j) -> GMT+0", _det(_u-26*3600)==0)
+chk("tick 6 jam basi -> GMT+0", _det(_u-6*3600)==0)
+chk("Exness manual=0 selalu 0", _det(_u-50*3600, 0)==0)
+chk("broker GMT+3 asli tetap terdeteksi", _det(_u+3*3600)==3)
 
 print("\n[21] Contract size diambil dari broker")
 chk("baca trade_contract_size", "trade_contract_size" in ex)

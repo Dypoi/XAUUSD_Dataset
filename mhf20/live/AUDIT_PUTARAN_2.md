@@ -17,11 +17,20 @@ Pola bug-nya selalu sama: **satuan atau asumsi lingkungan yang tidak diverifikas
 
 ## Temuan putaran 2 — 3 bug baru
 
-### 🔴 BUG 3 — Zona waktu server broker (paling merusak)
+### 🔴 BUG 3 — Zona waktu server broker
 
-Bar dari MT5 ber-timestamp **waktu server broker**, bukan UTC. Exness umumnya
-**GMT+2/+3** dan ikut DST. Sinyal MHF-20 memakai jendela sesi berbasis UTC
-(Asia `<7`, London `7–12`).
+> **KOREKSI PENTING (dari pengguna).** Asumsi awal saya "Exness GMT+2/+3" **SALAH**.
+> Help Center resmi Exness menyatakan: *"MetaTrader trading platforms are set to
+> Greenwich Mean Time (GMT+0)"* dan zona itu **tidak bisa diubah**. Untuk Exness,
+> offset yang benar adalah **0** — tidak perlu koreksi sama sekali.
+>
+> Akibatnya, deteksi otomatis versi pertama saya justru **berbahaya**: pada akhir pekan
+> tick terakhir bisa berumur puluhan jam, dan selisih itu terbaca sebagai "offset" palsu
+> sampai −12 jam → **merusak setup Exness yang sebenarnya sudah benar.**
+
+Bar dari MT5 ber-timestamp **waktu server broker**. Untuk Exness itu GMT+0 (sama dengan
+UTC), tapi broker lain berbeda: IC Markets & Pepperstone GMT+2/+3, JustMarkets GMT+3.
+Sinyal MHF-20 memakai jendela sesi berbasis UTC (Asia `<7`, London `7–12`).
 
 Dampak diukur dengan backtest 10 tahun:
 
@@ -34,9 +43,20 @@ Dampak diukur dengan backtest 10 tahun:
 **~19% sinyal berbeda** dari yang divalidasi backtest. Ini bukan penyimpangan kecil —
 BSL/SSL dihitung dari jendela sesi yang salah.
 
-**Perbaikan:** `_detect_server_offset()` membandingkan `tick.time` (server) dengan jam
-UTC nyata saat connect, lalu semua timestamp bar dikonversi ke UTC. Otomatis benar
-walau broker pindah DST.
+**Perbaikan (setelah koreksi):**
+- `SERVER_GMT_OFFSET = 0` di `config.py` — **default eksplisit untuk Exness**, bukan tebakan.
+- Deteksi otomatis hanya jaring pengaman untuk broker lain, dengan aturan ketat:
+  tick basi ditolak (selisih tidak mendekati jam bulat), offset tidak lazim ditolak,
+  ragu → 0.
+
+| Skenario | Offset dipakai |
+|---|---|
+| Exness GMT+0, tick segar | **0** ✓ |
+| Akhir pekan, tick 26 jam basi | **0** ✓ (dulu −12 ❌) |
+| Tick 6 jam basi | **0** ✓ (dulu −6 ❌) |
+| IC Markets GMT+3 asli | **+3** ✓ |
+
+Untuk Exness dampak nyatanya **nol** — sistem sudah benar sejak awal soal ini.
 
 ### 🔴 BUG 4 — Deviation slippage 10× terlalu ketat
 
@@ -69,10 +89,11 @@ sambil mencatat peringatan.
 | Audit | Sebelum | Sesudah |
 |---|---|---|
 | Paritas live vs backtest | 191/191 | **191/191** |
-| Ketahanan & lingkungan | 37/37 | **45/45** |
+| Ketahanan & lingkungan | 37/37 | **53/53** |
 | Eksekusi order | 37/37 | **37/37** |
 
-Uji baru: **[19]** deviation dari USD · **[20]** offset zona waktu · **[21]** contract size.
+Uji baru: **[19]** deviation dari USD · **[20]** offset zona waktu, termasuk 4 simulasi
+skenario berbahaya (akhir pekan, tick basi, override manual, broker GMT+3) · **[21]** contract size.
 
 ---
 
@@ -83,7 +104,8 @@ Uji baru: **[19]** deviation dari USD · **[20]** offset zona waktu · **[21]** 
 | 1 | `WARMUP_BARS` 4.000 < 11.520 | Bias H4 selalu False → **nol entry** | audit paritas |
 | 2 | Candle BID, bukan MID | Sinyal bergeser ½ spread | **Anda** |
 | 3 | Spread bar `/100` | `$2,600` → guard blokir **semua entry** | **Anda** |
-| 4 | Zona waktu server | **~19% sinyal berbeda** | audit putaran 2 |
+| 4 | Zona waktu server | ~19% sinyal berbeda **bila broker non-GMT+0**; Exness tidak terdampak | audit putaran 2 |
+| 4b | Deteksi offset salah saat tick basi | **Merusak Exness yang sudah benar** (−12 jam palsu) | **Anda** |
 | 5 | Deviation 10× ketat | Requote saat displacement | audit putaran 2 |
 | 6 | Contract size hardcoded | Risiko per posisi salah | audit putaran 2 |
 

@@ -57,12 +57,22 @@ import time as _t
 print(f"\n{'-'*58}\n  PEMERIKSAAN LINGKUNGAN\n{'-'*58}")
 
 srv = int(tk.time); utc = int(_t.time())
-off = round((srv - utc) / 3600.0)
-print(f"  Waktu server broker  : GMT{off:+.0f}")
-if off == 0:
-    print("    -> sama dengan UTC, tidak perlu koreksi")
-else:
-    print(f"    -> bar digeser {off:+.0f} jam ke UTC otomatis (window sesi jadi benar)")
+off_f = (srv - utc) / 3600.0
+near = round(off_f)
+stale = abs(off_f - near) > 0.2
+cfg_off = getattr(CFG, "SERVER_GMT_OFFSET", None)
+
+print(f"  Selisih tick vs UTC  : {off_f:+.2f} jam", end="")
+print("   (tick basi / pasar tutup)" if stale else "")
+print(f"  SERVER_GMT_OFFSET    : {cfg_off if cfg_off is not None else 'otomatis'}", end="")
+print("   <- Exness = GMT+0" if cfg_off == 0 else "")
+eff = cfg_off if cfg_off is not None else (0 if stale or near not in (-5,-4,0,1,2,3) else near)
+print(f"  Offset DIPAKAI       : GMT{eff:+d}", end="")
+print("   (tanpa koreksi, benar untuk Exness)" if eff == 0
+      else f"   (bar digeser {eff:+d} jam ke UTC)")
+if not stale and near != 0 and cfg_off == 0:
+    print(f"    PERINGATAN: tick menunjukkan GMT{near:+d} padahal config dipaksa 0.")
+    print(f"                Kalau broker Anda memang bukan Exness, ubah SERVER_GMT_OFFSET.")
 
 dev = max(1, int(round(CFG.MAX_SLIPPAGE_USD / si.point)))
 print(f"  Toleransi slippage   : ${CFG.MAX_SLIPPAGE_USD} = {dev} point")
