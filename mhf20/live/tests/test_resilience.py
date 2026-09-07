@@ -226,5 +226,15 @@ chk("engine backtest menegakkan cap", "MAX_ENTRIES_PER_DAY" in _en and "entries_
 chk("cap dikunci ke hari EKSEKUSI (day[j]), bukan hari sinyal",
     "entries_on.get(day[j]" in _en)
 
+print("\n[25] Log bersih: tanpa DeprecationWarning & tanpa noise disconnect Windows")
+_ap=open(os.path.join(_L,'app.py')).read()
+chk("tidak pakai on_event usang", "@app.on_event" not in _ap)
+chk("pakai lifespan handler", "lifespan=lifespan" in _ap and "asynccontextmanager" in _ap)
+chk("Runner tetap distart saat startup", "RUN.start()" in _ap)
+chk("Runner tetap distop saat shutdown", "RUN.stop()" in _ap)
+chk("peredam ConnectionResetError ada", "_quiet_disconnect_noise" in _ap)
+chk("peredam dipanggil di main()", "_quiet_disconnect_noise()" in _ap.split("def main()")[1])
+chk("hanya menelan error koneksi", "ConnectionResetError" in _ap and "default_exception_handler" in _ap)
+
 print(f"\n{'='*54}\nLULUS {P} · GAGAL {F}")
 sys.exit(1 if F else 0)

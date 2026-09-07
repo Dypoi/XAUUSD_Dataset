@@ -102,3 +102,25 @@ Pembulatan lot: risk $30 = risk $20 (sama-sama 0,02 lot). $40 → 0,03 lot = $36
 Audit: **paritas 191/191 · resilience 78/78 · eksekusi 38/38**.
 
 Detail + cara ganti mode: `docs/MODE_AKTIF.md`
+
+---
+
+## Log bersih — DeprecationWarning & ConnectionResetError (WinError 10054)
+
+Dua pesan yang muncul di `run.bat` **bukan error trading**; keduanya kosmetik. Tetap
+diperbaiki karena log yang berisik menyamarkan masalah sungguhan.
+
+1. **`on_event is deprecated`** — FastAPI menandai `@app.on_event("startup"/"shutdown")`
+   usang. Diganti ke **lifespan handler** (`@asynccontextmanager`). Runner tetap
+   distart/distop persis sama.
+
+2. **`ConnectionResetError: [WinError 10054]`** — muncul saat tab browser ditutup /
+   refresh: soket sudah mati sebelum uvicorn sempat menutupnya, lalu proactor Windows
+   melempar traceback. Diredam lewat `_quiet_disconnect_noise()` yang **hanya** menelan
+   `ConnectionResetError`/`ConnectionAbortedError`; error lain tetap tampil normal.
+
+Diverifikasi: server dijalankan, 4 koneksi diputus paksa (RST, SO_LINGER 0) → nol
+traceback, server tetap HTTP 200. Tes **[25]** menjaga keduanya tidak kembali.
+
+Audit: **paritas 191/191 · resilience 85/85 · eksekusi 38/38**.
+Verifikasi: `test_resilience.py` → **`LULUS 85 · GAGAL 0`**.

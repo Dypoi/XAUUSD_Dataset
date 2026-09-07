@@ -3,6 +3,7 @@ import sys, os, json, asyncio, signal as sigmod, time
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [_HERE, os.path.dirname(_HERE)]
 
+from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -12,7 +13,18 @@ from config import CFG, as_dict
 from store import Store, now_ms
 from runner import Runner
 
-app = FastAPI(title="MHF-20 Journal")
+@asynccontextmanager
+async def lifespan(_app):
+    global RUN
+    b = build_bridge()
+    RUN = Runner(b, STORE)
+    RUN.start()
+    yield
+    if RUN:
+        RUN.stop()
+
+
+app = FastAPI(title="MHF-20 Journal", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=os.path.join(_HERE, "static")), name="static")
 
 STORE = Store(CFG.DB_PATH)
@@ -35,19 +47,6 @@ def build_bridge():
         if not BRIDGE.connect():
             print(">> MT5 belum siap. Runner akan terus mencoba menyambung.")
     return BRIDGE
-
-
-@app.on_event("startup")
-def _startup():
-    global RUN
-    b = build_bridge()
-    RUN = Runner(b, STORE)
-    RUN.start()
-
-
-@app.on_event("shutdown")
-def _shutdown():
-    if RUN: RUN.stop()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -186,7 +185,36 @@ async def ws(sock: WebSocket):
         pass
 
 
+def _quiet_disconnect_noise():
+    """Windows: soket yang ditutup klien memunculkan ConnectionResetError di
+    _ProactorBasePipeTransport._call_connection_lost. Tidak berbahaya (bukan
+    kegagalan trading), tapi tampil seperti traceback crash. Diredam di sini."""
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        return
+
+    def handler(_loop, context):
+        exc = context.get("exception")
+        if isinstance(exc, (ConnectionResetError, ConnectionAbortedError)):
+            return
+        _loop.default_exception_handler(context)
+
+    loop.set_exception_handler(handler)
+
+    if sys.platform == "win32":
+        import asyncio.proactor_events as _pe
+        _orig = _pe._ProactorBasePipeTransport._call_connection_lost
+
+        def _safe(self, exc):
+            with suppress(ConnectionResetError, ConnectionAbortedError, OSError):
+                _orig(self, exc)
+
+        _pe._ProactorBasePipeTransport._call_connection_lost = _safe
+
+
 def main():
+    _quiet_disconnect_noise()
     host = os.environ.get("MHF20_HOST", CFG.HOST)
     port = int(os.environ.get("MHF20_PORT", CFG.PORT))
     print(f"\n  MHF-20 Journal  ->  http://{host}:{port}\n  Ctrl+C untuk berhenti (state tersimpan otomatis)\n")
