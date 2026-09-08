@@ -124,3 +124,38 @@ traceback, server tetap HTTP 200. Tes **[25]** menjaga keduanya tidak kembali.
 
 Audit: **paritas 191/191 · resilience 85/85 · eksekusi 38/38**.
 Verifikasi: `test_resilience.py` → **`LULUS 85 · GAGAL 0`**.
+
+---
+
+## MODE HARIAN — target pengguna: bertahan 1 tahun + >=1 entry/hari + profitable
+
+**Uji order block pada MHF-20:** 9 dari 9 variasi parameter LULUS IS+OOS (dataran, bukan
+puncak) dan mengalahkan 29 dari 30 filter plasebo. PF 1,304 -> 1,401. **Efeknya nyata.**
+
+**TAPI ditolak untuk default**, karena gagal dua syarat Anda:
+- entry hanya 0,48–0,70/hari (target >=1)
+- jendela 1-tahun profit turun 91,7% -> **62%** (OB memangkas sampel jadi ~120-172/thn)
+
+| Setelan | /hari | PF | thn profit | terburuk |
+|---|---|---|---|---|
+| **Tanpa OB dist1.5 (BARU)** | **1,79** | **1,374** | **91,7%** | −$501 |
+| Tanpa OB dist0.5 | 2,03 | 1,280 | 86,1% | −$827 |
+| Mode aktif cap5 | 1,15 | 1,353 | 91,7% | −$692 |
+| +OB 0.5/6 | 0,69 | 1,318 | 62,0% | −$726 |
+| +OB 0.8/6 | 0,48 | 1,313 | 66,7% | −$550 |
+
+### Default baru: MODE HARIAN
+`MAX_ENTRIES_PER_DAY=0` · `RISK_PER_POSITION=20` · `MAX_CONCURRENT=8` · `BIAS_MIN_DIST_PCT=1.50`
+
+n=4.337 · **1,79 entry/hari** · WR 56,63% · **PF 1,374** · CAGR **9,92%** · DD **−9,31%** ·
+t **+9,51** · **91,7% dari 108 jendela 12-bulan PROFIT** · tahun terburuk −$501.
+
+Terbaik di semua metrik dibanding mode sebelumnya. Ketiga syarat pengguna terpenuhi.
+
+**Catatan:** hanya 22% hari yang ada entry — 1,79/hari adalah rata-rata, bukan jaminan.
+Dan 8,3% jendela tahunan tetap rugi.
+
+Audit: **paritas 191/191 · resilience 85/85 · eksekusi 38/38** (satu tes cap diperbaiki
+agar mode tanpa-cap tetap teruji).
+
+Detail: `docs/UJI_OB_PADA_MHF20.md`

@@ -172,10 +172,20 @@ ok, why = ex5.can_execute(Ev(9400), 0, 0, 10000, 10000)
 chk("diblokir margin tipis", not ok and 'argin' in why, f"({why})")
 
 print("\n[13] Batas order per hari")
-ex2.orders_today = CFG.MAX_ENTRIES_PER_DAY
-ex2.frozen = False
-ok13, why13 = ex2.can_execute(Ev(9450), 0, 0, 10000, 10000)
-chk(f"cap {CFG.MAX_ENTRIES_PER_DAY} entry/hari ditolak saat penuh", (not ok13) and "entry/hari" in why13.lower())
+if CFG.MAX_ENTRIES_PER_DAY > 0:
+    # mode ber-cap (santai/aktif): entry melebihi cap harus ditolak
+    ex2.orders_today = CFG.MAX_ENTRIES_PER_DAY
+    ex2.frozen = False
+    ok13, why13 = ex2.can_execute(Ev(9450), 0, 0, 10000, 10000)
+    chk(f"cap {CFG.MAX_ENTRIES_PER_DAY} entry/hari ditolak saat penuh",
+        (not ok13) and "entry/hari" in why13.lower())
+else:
+    # mode harian (cap=0 -> tanpa batas): cap TIDAK boleh memblokir,
+    # tapi rem keras MAX_ORDERS_PER_DAY tetap wajib bekerja.
+    ex2.orders_today = 3
+    ex2.frozen = False
+    ok13, why13 = ex2.can_execute(Ev(9450), 0, 0, 10000, 10000)
+    chk("cap=0 tidak memblokir entry normal", ok13, f"({why13})")
 ex2.orders_today = CFG.MAX_ORDERS_PER_DAY
 ok, why = ex2.can_execute(Ev(9500), 0, 0, 10000, 10000)
 chk("batas harian memblokir", not ok, f"({why})")

@@ -3,11 +3,11 @@
 MHF-20  ·  Momentum Continuation, High-Frequency, Risk-$20
 XAUUSD Long-Only Trend-Aligned Breakout System
 ================================================================================
-MODE AKTIF: 5 ENTRY/HARI -- lihat docs/MODE_AKTIF.md
-  2,779 trades | 1.15 entry/hari | WR 55.70% | PF 1.353
-  $10,000 -> $23,061 (+130.6%, CAGR 9.10%) | MaxDD -11.83% | t-stat +7.16
-  IS 1.382 / OOS 1.330 | tahan +$0.50/sisi slippage (PF 1.171)
-  CATATAN: 75% hari TANPA sinyal -> cap 5 hanya berlaku di hari ramai
+MODE HARIAN: tanpa cap, >=1 entry/hari -- lihat docs/UJI_OB_PADA_MHF20.md
+  4,337 trades | 1.79 entry/hari | WR 56.63% | PF 1.374
+  $10,000 -> $25,562 (CAGR 9.92%) | MaxDD -9.31% | t-stat +9.51
+  BERTAHAN 1 TAHUN: 91.7% dari 108 jendela 12-bulan bergulir PROFIT
+  Tahun terburuk: -$501 (-5.0% akun)
 
 Mode santai (MAX_ENTRIES_PER_DAY=1, risk $100, 2 slot, dist 1.50):
   740 trades | 0.31/hari | PF 1.362 | CAGR 7.20% | DD -10.43%
@@ -47,9 +47,9 @@ class Config:
     TIME_STOP_BARS: int = 288       # 24 jam pada M5
 
     # --- Risiko ---
-    RISK_PER_POSITION: float = 40.0  # USD
-    MAX_ENTRIES_PER_DAY: int = 5    # mode aktif; 0 = tanpa batas
-    MAX_CONCURRENT: int = 8         # -> risiko total maks $320 (3.2% dari $10k)
+    RISK_PER_POSITION: float = 20.0  # USD
+    MAX_ENTRIES_PER_DAY: int = 0    # mode harian = tanpa cap
+    MAX_CONCURRENT: int = 8         # -> risiko total maks $160 (1.6% dari $10k)
     CONTRACT_SIZE: float = 100.0    # 1 lot = 100 oz
     MIN_LOT: float = 0.01
     MAX_LOT: float = 50.0
